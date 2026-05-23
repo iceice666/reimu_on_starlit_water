@@ -1,5 +1,5 @@
 [package]
-name = "limes-full-screenlock"
+name = "reimu-lays-on-water"
 description = "Full-screen iced lock-screen example for limes."
 edition = "2024"
 license = "MIT OR Apache-2.0"
