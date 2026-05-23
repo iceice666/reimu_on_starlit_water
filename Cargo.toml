@@ -1,0 +1,16 @@
+[package]
+name = "limes-full-screenlock"
+description = "Full-screen iced lock-screen example for limes."
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.94"
+version = "0.1.0"
+publish = false
+
+[dependencies]
+bytemuck = { version = "1.24", features = ["derive"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+iced = { version = "0.14", features = ["canvas", "image", "tokio"] }
+iced_sessionlock = "0.18"
+limes-lock = { version = "0.1" }
+tokio = { version = "1", features = ["rt"] }
