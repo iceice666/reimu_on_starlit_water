@@ -1,4 +1,9 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct CliConfig {
+    pub mode: CliMode,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CliMode {
     Lock,
     Preview,
@@ -7,15 +12,15 @@ pub(crate) enum CliMode {
 impl CliMode {
     pub(crate) fn from_args(
         mut args: impl Iterator<Item = String>,
-    ) -> Result<Option<Self>, String> {
+    ) -> Result<Option<CliConfig>, String> {
         let Some(command) = args.next() else {
             print_help();
             return Ok(None);
         };
 
         match command.as_str() {
-            "lock" => Self::parse_command(Self::Lock, &command, args),
-            "preview" => Self::parse_command(Self::Preview, &command, args),
+            "lock" => Self::parse_command(CliMode::Lock, &command, args),
+            "preview" => Self::parse_command(CliMode::Preview, &command, args),
             "help" | "--help" | "-h" => {
                 print_help();
                 Ok(None)
@@ -27,26 +32,22 @@ impl CliMode {
     }
 
     fn parse_command(
-        mode: Self,
+        mode: CliMode,
         command: &str,
         args: impl Iterator<Item = String>,
-    ) -> Result<Option<Self>, String> {
-        let extra = args.collect::<Vec<_>>();
-        if extra
-            .iter()
-            .any(|arg| matches!(arg.as_str(), "--help" | "-h"))
-        {
-            print_command_help(mode);
-            return Ok(None);
-        }
-        if !extra.is_empty() {
+    ) -> Result<Option<CliConfig>, String> {
+        if let Some(arg) = args.into_iter().next() {
+            if arg == "--help" || arg == "-h" {
+                print_command_help(mode);
+                return Ok(None);
+            }
+
             return Err(format!(
-                "unexpected arguments for `{command}`: {}",
-                extra.join(" ")
+                "unexpected argument `{arg}` for `{command}`; use `{command} --help`"
             ));
         }
 
-        Ok(Some(mode))
+        Ok(Some(CliConfig { mode }))
     }
 }
 
@@ -54,7 +55,8 @@ fn print_help() {
     println!(
         "limes full screenlock\n\n\
 Usage:\n  limes-full-screenlock lock\n  limes-full-screenlock preview\n\n\
-Commands:\n  lock     Lock the session using Wayland ext-session-lock-v1 surfaces\n  preview  Show the lock UI in a normal window without locking or PAM"
+Commands:\n  lock     Lock the session using Wayland ext-session-lock-v1 surfaces\n  preview  Show the lock UI in a normal window without locking or PAM\n\n\
+Options:\n  -h, --help    Show help"
     );
 }
 

@@ -6,6 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use chrono::{Datelike, Local, Weekday};
 use iced::widget::operation::focus;
 use iced::{Event, Size, Subscription, Task, event, keyboard, mouse, time, window};
 use iced_sessionlock::{actions::UnLockAction, application as sessionlock_application};
@@ -69,6 +70,9 @@ struct FullScreenLock {
     auth_started: Option<Instant>,
     failure_shade: bool,
     status: String,
+    clock_date: String,
+    clock_time: String,
+    clock_minute: i64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -122,6 +126,8 @@ impl FullScreenLock {
 
     fn new(mode: RunMode, runtime: Option<Arc<LockRuntime>>) -> Self {
         let now = Instant::now();
+        let now_local = Local::now();
+        let (clock_date, clock_time, clock_minute) = Self::format_clock(now_local);
 
         Self {
             mode,
@@ -141,14 +147,41 @@ impl FullScreenLock {
             } else {
                 String::new()
             },
+            clock_date,
+            clock_time,
+            clock_minute,
         }
+    }
+
+    fn format_clock(now: chrono::DateTime<Local>) -> (String, String, i64) {
+        (
+            chinese_date(now.weekday(), now.month(), now.day()),
+            now.format("%H:%M").to_string(),
+            now.timestamp() / 60,
+        )
+    }
+
+    fn update_clock_text(&mut self) {
+        let now = Local::now();
+        let current_minute = now.timestamp() / 60;
+
+        if current_minute != self.clock_minute {
+            let (date, time, minute) = Self::format_clock(now);
+            self.clock_date = date;
+            self.clock_time = time;
+            self.clock_minute = minute;
+        }
+    }
+
+    fn resting_frame(&self) -> Duration {
+        RESTING_FRAME
     }
 
     fn subscription(&self) -> Subscription<Message> {
         let frame_time = if self.screen_state == ScreenState::Authenticating {
             SPINNER_FRAME
         } else {
-            RESTING_FRAME
+            self.resting_frame()
         };
 
         let mut subscriptions = vec![
@@ -179,6 +212,8 @@ impl FullScreenLock {
             Message::WindowCloseRequested => iced::exit(),
             Message::WindowClosed => iced::exit(),
             Message::Tick(now) => {
+                self.update_clock_text();
+
                 if self.screen_state == ScreenState::Typing
                     && now.duration_since(self.last_input) > IDLE_AFTER
                 {
@@ -351,4 +386,18 @@ fn auth_error_message(error: &ProtoAuthFailure) -> String {
         }
         ProtoAuthFailure::Internal(reason) => format!("Authentication error: {reason}"),
     }
+}
+
+fn chinese_date(weekday: Weekday, month: u32, day: u32) -> String {
+    let weekday = match weekday {
+        Weekday::Mon => "週一",
+        Weekday::Tue => "週二",
+        Weekday::Wed => "週三",
+        Weekday::Thu => "週四",
+        Weekday::Fri => "週五",
+        Weekday::Sat => "週六",
+        Weekday::Sun => "週日",
+    };
+
+    format!("{month}月{day}日 {weekday}")
 }

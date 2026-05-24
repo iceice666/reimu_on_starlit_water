@@ -1,6 +1,5 @@
 use std::time::{Duration, Instant};
 
-use chrono::{Datelike, Local, Weekday};
 use iced::widget::{
     Canvas, Shader, Space, column, container, image, stack, text, text::Wrapping, text_input,
 };
@@ -53,13 +52,11 @@ impl FullScreenLock {
     }
 
     fn idle_view(&self, window: window::Id) -> Element<'_, Message> {
-        let now = Local::now();
-
         container(
             Shader::new(MacosGlassClock::new(
                 window,
-                chinese_date(now.weekday(), now.month(), now.day()),
-                now.format("%H:%M").to_string(),
+                self.clock_date.clone(),
+                self.clock_time.clone(),
             ))
             .width(Length::Fill)
             .height(Length::Fill),
@@ -147,20 +144,6 @@ impl FullScreenLock {
             .align_x(Alignment::Center)
             .into()
     }
-}
-
-fn chinese_date(weekday: Weekday, month: u32, day: u32) -> String {
-    let weekday = match weekday {
-        Weekday::Mon => "週一",
-        Weekday::Tue => "週二",
-        Weekday::Wed => "週三",
-        Weekday::Thu => "週四",
-        Weekday::Fri => "週五",
-        Weekday::Sat => "週六",
-        Weekday::Sun => "週日",
-    };
-
-    format!("{month}月{day}日 {weekday}")
 }
 
 fn auth_status_message(auth_started: Option<Instant>, status: &str) -> &str {

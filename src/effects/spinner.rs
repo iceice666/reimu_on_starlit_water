@@ -48,15 +48,13 @@ impl<Message> canvas::Program<Message> for FlowerSpinner {
         let elapsed = self.elapsed.as_secs_f32();
         let phase = (elapsed / SPINNER_REVOLUTION.as_secs_f32()).fract();
         let appear = ease_out_cubic((elapsed / SPINNER_FADE_IN.as_secs_f32()).clamp(0.0, 1.0));
-        let pulse = 1.0 + (elapsed * std::f32::consts::TAU * SPINNER_PULSE_RATE).sin() * SPINNER_GLOW_WAVE;
+        let pulse =
+            1.0 + (elapsed * std::f32::consts::TAU * SPINNER_PULSE_RATE).sin() * SPINNER_GLOW_WAVE;
         let ring_breathe = (elapsed * 0.65).sin() * 0.25;
         let scale = lerp(0.84, 1.0, appear) * pulse;
 
         let glow = canvas::Path::circle(center, SPINNER_OUTER_GLOW_RADIUS * scale);
-        frame.fill(
-            &glow,
-            Color::from_rgba(0.58, 0.86, 1.0, 0.10 * appear),
-        );
+        frame.fill(&glow, Color::from_rgba(0.58, 0.86, 1.0, 0.10 * appear));
 
         let ring = canvas::Path::circle(center, SPINNER_RING_RADIUS * scale);
         frame.stroke(
@@ -103,12 +101,7 @@ impl<Message> canvas::Program<Message> for FlowerSpinner {
                 let inner_bound = SPINNER_INNER_RING_RADIUS + 1.2;
                 let offset = lerp(inner_bound + 1.2, outer_bound - 1.5, intensity);
                 let shade = lerp(0.34, 1.0, intensity);
-                let color = Color::from_rgba(
-                    shade,
-                    shade,
-                    shade,
-                    alpha,
-                );
+                let color = Color::from_rgba(shade, shade, shade, alpha);
 
                 frame.with_save(|frame| {
                     frame.rotate(angle);
@@ -131,7 +124,6 @@ impl<Message> canvas::Program<Message> for FlowerSpinner {
                         &shine_path,
                         Color::from_rgba(0.98, 0.99, 1.0, alpha * 0.58 * intensity),
                     );
-
                 });
             }
         });

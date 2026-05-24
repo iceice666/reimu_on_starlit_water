@@ -37,6 +37,8 @@ Run the real session lock:
 cargo run -- lock
 ```
 
+The shader runs at the high quality setting by default.
+
 Build a release binary:
 
 ```sh

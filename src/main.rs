@@ -17,8 +17,10 @@ fn main() {
 
 fn run() -> Result<(), String> {
     match CliMode::from_args(env::args().skip(1))? {
-        Some(CliMode::Lock) => app::run_lock(),
-        Some(CliMode::Preview) => app::run_preview(),
+        Some(config) => match config.mode {
+            CliMode::Lock => app::run_lock(),
+            CliMode::Preview => app::run_preview(),
+        },
         None => Ok(()),
     }
 }

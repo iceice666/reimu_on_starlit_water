@@ -150,6 +150,9 @@ fn impact_ripples(uv: vec2<f32>, aspect: f32) -> vec4<f32> {
             if (is_active < 0.5) {
                 continue;
             }
+            if (hash21(cell + vec2<f32>(13.7, 22.3)) > 0.5) {
+                continue;
+            }
             let rate = 0.16 + random.y * 0.24;
             let life = fract(uniforms.time * rate + random.x);
             let grow = ease_out_cubic(life);
@@ -190,6 +193,9 @@ fn broad_surface_ripples(uv: vec2<f32>, aspect: f32) -> f32 {
         for (var x: i32 = -1; x <= 1; x = x + 1) {
             let cell = base_cell + vec2<f32>(f32(x), f32(y));
             if (hash21(cell + vec2<f32>(4.1, 7.7)) < 0.58) {
+                continue;
+            }
+            if (hash21(cell + vec2<f32>(18.3, 13.6)) > 0.5) {
                 continue;
             }
             let random = hash22(cell + vec2<f32>(31.0, 11.0));
