@@ -40,15 +40,23 @@ impl<Message> canvas::Program<Message> for FlowerSpinner {
         let pulse = 1.0 + (elapsed * std::f32::consts::TAU * 1.35).sin() * 0.025;
         let scale = lerp(0.84, 1.0, appear) * pulse;
 
-        let glow = canvas::Path::circle(center, 19.0 * scale);
-        frame.fill(&glow, Color::from_rgba(0.58, 0.74, 1.0, 0.08 * appear));
+        let glow = canvas::Path::circle(center, 21.0 * scale);
+        frame.fill(&glow, Color::from_rgba(0.62, 0.88, 1.0, 0.14 * appear));
 
         let ring = canvas::Path::circle(center, 20.0 * scale);
         frame.stroke(
             &ring,
             canvas::Stroke::default()
-                .with_width(1.0)
-                .with_color(Color::from_rgba(1.0, 1.0, 1.0, 0.12 * appear)),
+                .with_width(1.15)
+                .with_color(Color::from_rgba(0.95, 1.0, 1.0, 0.24 * appear)),
+        );
+
+        let inner_ring = canvas::Path::circle(center, 13.5 * scale);
+        frame.stroke(
+            &inner_ring,
+            canvas::Stroke::default()
+                .with_width(0.75)
+                .with_color(Color::from_rgba(0.56, 0.86, 1.0, 0.16 * appear)),
         );
 
         frame.with_save(|frame| {
@@ -58,14 +66,14 @@ impl<Message> canvas::Program<Message> for FlowerSpinner {
             for petal in 0..SPINNER_PETALS {
                 let trail = petal as f32 / SPINNER_PETALS as f32;
                 let intensity = (1.0 - trail).powf(2.35);
-                let alpha = (0.14 + intensity * 0.76) * appear;
+                let alpha = (0.18 + intensity * 0.78) * appear;
                 let angle = rotation - std::f32::consts::TAU * trail;
-                let width = lerp(3.1, 5.0, intensity);
-                let length = lerp(9.5, 15.5, intensity);
+                let width = lerp(3.0, 5.3, intensity);
+                let length = lerp(9.0, 16.0, intensity);
                 let offset = lerp(17.0, 22.5, intensity);
                 let color = Color::from_rgba(
-                    lerp(0.72, 1.0, intensity),
-                    lerp(0.84, 1.0, intensity),
+                    lerp(0.62, 1.0, intensity),
+                    lerp(0.86, 1.0, intensity),
                     1.0,
                     alpha,
                 );
@@ -85,7 +93,7 @@ impl<Message> canvas::Program<Message> for FlowerSpinner {
         });
 
         let core = canvas::Path::circle(center, 2.5 * scale);
-        frame.fill(&core, Color::from_rgba(1.0, 1.0, 1.0, 0.52 * appear));
+        frame.fill(&core, Color::from_rgba(1.0, 1.0, 1.0, 0.68 * appear));
 
         vec![frame.into_geometry()]
     }

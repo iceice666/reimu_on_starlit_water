@@ -1,19 +1,20 @@
 use std::time::{Duration, Instant};
 
-use chrono::Local;
+use chrono::{Datelike, Local, Weekday};
 use iced::widget::{Canvas, Shader, Space, column, container, image, stack, text, text_input};
 use iced::{Alignment, Color, ContentFit, Element, Length, window};
 
-use crate::effects::{FlowerSpinner, RainDrops};
+use crate::effects::{FlowerSpinner, MacosGlassClock, RainDrops};
 use crate::math::{ease_out_cubic, lerp};
-use crate::style::{clock_glass, input_shell, password_input_style};
+use crate::style::{input_shell, password_input_style};
 
 use super::{FullScreenLock, Message, PASSWORD_INPUT_ID, ScreenState};
 
 const SLOW_AUTH_AFTER: Duration = Duration::from_secs(3);
 const RAIN_INTENSITY: f32 = 0.90;
-const INPUT_WIDTH: f32 = 420.0;
-const INPUT_HEIGHT: f32 = 64.0;
+const INPUT_WIDTH: f32 = 200.0;
+const INPUT_HEIGHT: f32 = 45.0;
+const PASSWORD_TEXT_SIZE: f32 = 20.0;
 const CIRCLE_TRANSITION: Duration = Duration::from_millis(260);
 
 impl FullScreenLock {
@@ -39,7 +40,7 @@ impl FullScreenLock {
         .height(Length::Fill);
 
         let content = match self.screen_state {
-            ScreenState::Idle => self.idle_view(),
+            ScreenState::Idle => self.idle_view(window),
             ScreenState::Typing => self.typing_view(false),
             ScreenState::Authenticating => self.typing_view(true),
         };
@@ -47,28 +48,18 @@ impl FullScreenLock {
         stack![background, rain, content].into()
     }
 
-    fn idle_view(&self) -> Element<'_, Message> {
+    fn idle_view(&self, window: window::Id) -> Element<'_, Message> {
         let now = Local::now();
-        let clock = column![
-            text(now.format("%H:%M").to_string())
-                .size(112)
-                .color(Color::WHITE),
-            text(now.format("%A, %B %-d").to_string())
-                .size(25)
-                .color(Color::from_rgba(1.0, 1.0, 1.0, 0.86)),
-        ]
-        .align_x(Alignment::Center)
-        .spacing(2);
 
-        let glass_clock = container(clock)
-            .padding([24, 48])
-            .width(Length::Shrink)
-            .style(|_| clock_glass());
-
-        container(column![
-            Space::new().height(Length::Fixed(56.0)),
-            glass_clock
-        ])
+        container(
+            Shader::new(MacosGlassClock::new(
+                window,
+                chinese_date(now.weekday(), now.month(), now.day()),
+                now.format("%H:%M").to_string(),
+            ))
+            .width(Length::Fill)
+            .height(Length::Fill),
+        )
         .width(Length::Fill)
         .height(Length::Fill)
         .align_x(Alignment::Center)
@@ -108,8 +99,8 @@ impl FullScreenLock {
                 .on_input(Message::PasswordChanged)
                 .on_submit(Message::Submit)
                 .secure(true)
-                .padding([14, 22])
-                .size(22)
+                .padding([6, 18])
+                .size(PASSWORD_TEXT_SIZE)
                 .width(Length::Fill)
                 .style(move |_, status| password_input_style(status, failed));
 
@@ -124,7 +115,7 @@ impl FullScreenLock {
         let content = if loading {
             let pam_status = container(
                 text(auth_status_message(self.auth_started, &self.status))
-                    .size(15)
+                    .size(PASSWORD_TEXT_SIZE)
                     .color(Color::from_rgba(1.0, 1.0, 1.0, 0.74)),
             )
             .padding([8, 18])
@@ -156,7 +147,21 @@ impl FullScreenLock {
     }
 }
 
-fn auth_status_message<'a>(auth_started: Option<Instant>, status: &'a str) -> &'a str {
+fn chinese_date(weekday: Weekday, month: u32, day: u32) -> String {
+    let weekday = match weekday {
+        Weekday::Mon => "週一",
+        Weekday::Tue => "週二",
+        Weekday::Wed => "週三",
+        Weekday::Thu => "週四",
+        Weekday::Fri => "週五",
+        Weekday::Sat => "週六",
+        Weekday::Sun => "週日",
+    };
+
+    format!("{month}月{day}日 {weekday}")
+}
+
+fn auth_status_message(auth_started: Option<Instant>, status: &str) -> &str {
     if auth_started.is_some_and(|started| started.elapsed() > SLOW_AUTH_AFTER) {
         "Still verifying…"
     } else if status.is_empty() {
