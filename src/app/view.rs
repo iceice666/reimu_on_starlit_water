@@ -1,7 +1,9 @@
 use std::time::{Duration, Instant};
 
 use chrono::{Datelike, Local, Weekday};
-use iced::widget::{Canvas, Shader, Space, column, container, image, stack, text, text_input};
+use iced::widget::{
+    Canvas, Shader, Space, column, container, image, stack, text, text::Wrapping, text_input,
+};
 use iced::{Alignment, Color, ContentFit, Element, Length, window};
 
 use crate::effects::{FlowerSpinner, MacosGlassClock, RainDrops};
@@ -15,6 +17,8 @@ const RAIN_INTENSITY: f32 = 0.90;
 const INPUT_WIDTH: f32 = 200.0;
 const INPUT_HEIGHT: f32 = 45.0;
 const PASSWORD_TEXT_SIZE: f32 = 20.0;
+const STATUS_TEXT_SIZE: f32 = 16.0;
+const STATUS_MAX_WIDTH: f32 = 480.0;
 const CIRCLE_TRANSITION: Duration = Duration::from_millis(260);
 
 impl FullScreenLock {
@@ -88,13 +92,8 @@ impl FullScreenLock {
             .into()
         } else {
             let failed = self.failure_shade;
-            let placeholder = if !self.status.is_empty() {
-                self.status.as_str()
-            } else {
-                "Password"
-            };
 
-            let input = text_input(placeholder, &self.password)
+            let input = text_input("", &self.password)
                 .id(PASSWORD_INPUT_ID)
                 .on_input(Message::PasswordChanged)
                 .on_submit(Message::Submit)
@@ -113,14 +112,8 @@ impl FullScreenLock {
         };
 
         let content = if loading {
-            let pam_status = container(
-                text(auth_status_message(self.auth_started, &self.status))
-                    .size(PASSWORD_TEXT_SIZE)
-                    .color(Color::from_rgba(1.0, 1.0, 1.0, 0.74)),
-            )
-            .padding([8, 18])
-            .width(Length::Shrink)
-            .style(|_| input_shell(false));
+            let pam_status =
+                status_badge(auth_status_message(self.auth_started, &self.status), false);
 
             column![
                 Space::new().height(Length::Fill),
@@ -130,13 +123,22 @@ impl FullScreenLock {
             ]
             .align_x(Alignment::Center)
             .spacing(12)
-        } else {
+        } else if self.status.is_empty() {
             column![
                 Space::new().height(Length::Fill),
                 field,
                 Space::new().height(Length::Fixed(84.0))
             ]
             .align_x(Alignment::Center)
+        } else {
+            column![
+                Space::new().height(Length::Fill),
+                field,
+                status_badge(&self.status, self.failure_shade),
+                Space::new().height(Length::Fixed(54.0))
+            ]
+            .align_x(Alignment::Center)
+            .spacing(12)
         };
 
         container(content)
@@ -168,6 +170,29 @@ fn auth_status_message(auth_started: Option<Instant>, status: &str) -> &str {
         "Verifying…"
     } else {
         status
+    }
+}
+
+fn status_badge(status: &str, failed: bool) -> Element<'_, Message> {
+    container(
+        text(status)
+            .size(STATUS_TEXT_SIZE)
+            .color(status_text_color(failed))
+            .align_x(Alignment::Center)
+            .wrapping(Wrapping::WordOrGlyph),
+    )
+    .padding([6, 16])
+    .width(Length::Shrink)
+    .max_width(STATUS_MAX_WIDTH)
+    .style(move |_| input_shell(failed))
+    .into()
+}
+
+fn status_text_color(failed: bool) -> Color {
+    if failed {
+        Color::from_rgba(1.0, 0.84, 0.86, 0.94)
+    } else {
+        Color::from_rgba(1.0, 1.0, 1.0, 0.74)
     }
 }
 
