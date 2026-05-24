@@ -59,5 +59,5 @@ The bundled `bg.jpg` source is Pixiv artwork 34844544: <https://www.pixiv.net/ar
 ## Customization
 
 - Replace `bg.jpg` to change the bundled wallpaper.
-- Edit `src/rain_drops.wgsl` to adjust the water/rain effect.
+- Edit `src/rain_ripples.wgsl` for water ripples and `src/rain_drops.wgsl` for rain drops.
 - Tune constants near the top of `src/main.rs` for timing, intensity, input sizing, and animation speed.
