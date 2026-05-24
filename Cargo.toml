@@ -12,5 +12,5 @@ bytemuck = { version = "1.24", features = ["derive"] }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 iced = { version = "0.14", features = ["canvas", "image", "tokio"] }
 iced_sessionlock = "0.18"
-limes-lock = { version = "0.1" }
+limes-lock = { version = "0.1.1" }
 tokio = { version = "1", features = ["rt"] }

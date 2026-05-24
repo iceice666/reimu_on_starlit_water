@@ -10,8 +10,8 @@ use iced::widget::operation::focus;
 use iced::{Event, Size, Subscription, Task, event, keyboard, mouse, time, window};
 use iced_sessionlock::{actions::UnLockAction, application as sessionlock_application};
 use limes_lock::{
-    AuthFailure as ProtoAuthFailure, AuthOutcome, AuthRequest, LockRuntime, LockState,
-    StderrEventSink,
+    AuthFailure as ProtoAuthFailure, AuthOutcome, AuthRequest, Config, EventBus, LockRuntime,
+    LockState, NoopDisplayBackend, NoopLockBackend, StderrEventSink,
 };
 
 const IDLE_AFTER: Duration = Duration::from_secs(8);
@@ -39,12 +39,17 @@ pub(crate) fn run_lock() -> Result<(), String> {
 }
 
 pub(crate) fn run_preview() -> Result<(), String> {
-    iced::daemon(
+    iced::application(
         FullScreenLock::new_preview,
         FullScreenLock::update,
-        FullScreenLock::view,
+        FullScreenLock::preview_view,
     )
     .title("limes full screenlock preview")
+    .window(window::Settings {
+        size: Size::new(1280.0, 720.0),
+        min_size: Some(Size::new(640.0, 360.0)),
+        ..window::Settings::default()
+    })
     .subscription(FullScreenLock::subscription)
     .run()
     .map_err(|error| error.to_string())
@@ -53,6 +58,7 @@ pub(crate) fn run_preview() -> Result<(), String> {
 struct FullScreenLock {
     mode: RunMode,
     runtime: Option<Arc<LockRuntime>>,
+    preview_window: window::Id,
     wallpaper: iced::widget::image::Handle,
     rain_started: Instant,
     username: String,
@@ -85,8 +91,8 @@ enum Message {
     AuthFinished(AuthOutcome),
     PreviewAuthFinished,
     UnlockSession,
-    PreviewWindowOpened,
     WindowCloseRequested,
+    WindowClosed,
     Tick(Instant),
     IcedEvent(Event),
 }
@@ -108,15 +114,9 @@ impl FullScreenLock {
     }
 
     fn new_preview() -> (Self, Task<Message>) {
-        let (_, open_window) = window::open(window::Settings {
-            size: Size::new(1280.0, 720.0),
-            min_size: Some(Size::new(640.0, 360.0)),
-            ..window::Settings::default()
-        });
-
         (
-            Self::new(RunMode::Preview, None),
-            open_window.map(|_| Message::PreviewWindowOpened),
+            Self::new(RunMode::Preview, Some(Arc::new(noop_lock_runtime()))),
+            Task::none(),
         )
     }
 
@@ -126,6 +126,7 @@ impl FullScreenLock {
         Self {
             mode,
             runtime,
+            preview_window: window::Id::unique(),
             wallpaper: iced::widget::image::Handle::from_bytes(WALLPAPER_BYTES),
             rain_started: now,
             username: env::var("USER").unwrap_or_default(),
@@ -157,6 +158,7 @@ impl FullScreenLock {
 
         if self.mode == RunMode::Preview {
             subscriptions.push(window::close_requests().map(|_| Message::WindowCloseRequested));
+            subscriptions.push(window::close_events().map(|_| Message::WindowClosed));
         }
 
         Subscription::batch(subscriptions)
@@ -173,8 +175,9 @@ impl FullScreenLock {
             Message::Submit => self.submit(),
             Message::AuthFinished(outcome) => self.finish_auth(outcome),
             Message::PreviewAuthFinished => self.finish_preview_auth(),
-            Message::UnlockSession | Message::PreviewWindowOpened => Task::none(),
+            Message::UnlockSession => Task::none(),
             Message::WindowCloseRequested => iced::exit(),
+            Message::WindowClosed => iced::exit(),
             Message::Tick(now) => {
                 if self.screen_state == ScreenState::Typing
                     && now.duration_since(self.last_input) > IDLE_AFTER
@@ -201,17 +204,17 @@ impl FullScreenLock {
                         Task::none()
                     }
                     _ => {
-                        if self.screen_state == ScreenState::Idle {
-                            if let Some(typed_text) = typed_text {
-                                let typed_text: &str = typed_text.as_ref();
+                        if self.screen_state == ScreenState::Idle
+                            && let Some(typed_text) = typed_text
+                        {
+                            let typed_text: &str = typed_text.as_ref();
 
-                                if !typed_text.is_empty()
-                                    && typed_text.chars().all(|character| !character.is_control())
-                                {
-                                    self.password.push_str(typed_text);
-                                    self.failure_shade = false;
-                                    self.status.clear();
-                                }
+                            if !typed_text.is_empty()
+                                && typed_text.chars().all(|character| !character.is_control())
+                            {
+                                self.password.push_str(typed_text);
+                                self.failure_shade = false;
+                                self.status.clear();
                             }
                         }
 
@@ -323,6 +326,20 @@ impl FullScreenLock {
         self.last_input = Instant::now();
         focus(PASSWORD_INPUT_ID)
     }
+}
+
+fn noop_lock_runtime() -> LockRuntime {
+    LockRuntime::with_parts(
+        Config {
+            login_frontend: None,
+            lock_frontend: None,
+            session_command: Vec::new(),
+            max_auth_attempts: 1,
+        },
+        Arc::new(NoopLockBackend),
+        Arc::new(NoopDisplayBackend),
+        EventBus::new(),
+    )
 }
 
 fn auth_error_message(error: &ProtoAuthFailure) -> String {

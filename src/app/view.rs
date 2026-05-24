@@ -17,6 +17,10 @@ const INPUT_HEIGHT: f32 = 64.0;
 const CIRCLE_TRANSITION: Duration = Duration::from_millis(260);
 
 impl FullScreenLock {
+    pub(super) fn preview_view(&self) -> Element<'_, Message> {
+        self.view(self.preview_window)
+    }
+
     pub(super) fn view(&self, window: window::Id) -> Element<'_, Message> {
         // Keep a stable image handle. Recreating `Handle::from_bytes` in every
         // view pass gives iced a fresh cache id each frame and can leave the
