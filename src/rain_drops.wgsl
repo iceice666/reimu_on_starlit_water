@@ -55,96 +55,72 @@ fn rain_impacts(uv: vec2<f32>, aspect: f32) -> vec3<f32> {
     return vec3<f32>(saturate(pins), saturate(rings), saturate(mist));
 }
 
-fn tapered_tail(local: vec2<f32>, tail_dir: vec2<f32>, tail_length: f32, width: f32) -> f32 {
-    let along = dot(local, tail_dir);
-    let travel = saturate(along / max(tail_length, 0.001));
-    let closest = local - tail_dir * clamp(along, 0.0, tail_length);
-    let across = length(closest);
-    let tapered_width = mix(width * 1.10, width * 0.20, travel);
-    let axial = smoothstep(-width * 0.80, width * 0.40, along) * (1.0 - smoothstep(tail_length * 0.70, tail_length, along));
-    let lateral = 1.0 - smoothstep(tapered_width * 0.45, tapered_width, across);
-    let head_weight = 1.0 - travel * 0.58;
-
-    return saturate(axial * lateral * head_weight);
-}
-
 fn top_down_raindrops(uv: vec2<f32>, aspect: f32) -> vec4<f32> {
-    // Render the drops as bright beads with a deliberately long motion trace.
-    // Neighbor-cell sampling lets the tail extend past its source cell instead
-    // of being clipped into a short dot.
+    // Top-down view: spend the drop pass on bright surface hits, not long
+    // falling tails. This keeps visible white beads while reducing the hot loop
+    // from 3 * 5 * 5 candidates to 2 * 3 * 3 candidates per pixel.
     let point = vec2<f32>(uv.x * aspect, uv.y);
 
-    var beads = 0.0;
-    var blooms = 0.0;
-    var glints = 0.0;
-    var trails = 0.0;
+    var cores = 0.0;
+    var halos = 0.0;
+    var rings = 0.0;
+    var sparkles = 0.0;
 
-    for (var layer: i32 = 0; layer < 3; layer = layer + 1) {
+    for (var layer: i32 = 0; layer < 2; layer = layer + 1) {
         let layer_f = f32(layer);
-        let scale = 26.0 + layer_f * 16.0;
+        let scale = 34.0 + layer_f * 12.0;
         let layer_offset = vec2<f32>(layer_f * 19.17, layer_f * 37.31);
         let p = point * scale + layer_offset;
         let base_cell = floor(p);
 
-        for (var y: i32 = -2; y <= 2; y = y + 1) {
-            for (var x: i32 = -2; x <= 2; x = x + 1) {
+        for (var y: i32 = -1; y <= 1; y = y + 1) {
+            for (var x: i32 = -1; x <= 1; x = x + 1) {
                 let cell = base_cell + vec2<f32>(f32(x), f32(y));
-                let base_random = hash22(cell + vec2<f32>(71.0 + layer_f * 13.0, 53.0 - layer_f * 7.0));
-                let base_timing = hash22(cell + vec2<f32>(149.0 - layer_f * 3.0, 67.0 + layer_f * 23.0));
-                let cycle = uniforms.time * (1.75 + base_random.y * 5.25 + base_timing.x * 1.85 + layer_f * 0.45) + base_random.x + base_timing.y * 0.53;
+                let random = hash22(cell + vec2<f32>(71.0 + layer_f * 13.0, 53.0 - layer_f * 7.0));
+                let shape = hash22(cell + vec2<f32>(5.0 + layer_f * 31.0, 101.0 - layer_f * 11.0));
+                let cycle = uniforms.time * (1.40 + random.y * 3.20 + layer_f * 0.34) + random.x;
                 let event_id = floor(cycle);
                 let phase = fract(cycle);
                 let event_cell = cell + vec2<f32>(event_id * 41.97, event_id * -23.39);
-                let random = hash22(event_cell + vec2<f32>(71.0 + layer_f * 13.0, 53.0 - layer_f * 7.0));
-                let shape = hash22(event_cell + vec2<f32>(5.0 + layer_f * 31.0, 101.0 - layer_f * 11.0));
-                let timing = hash22(event_cell + vec2<f32>(149.0 - layer_f * 3.0, 67.0 + layer_f * 23.0));
-                let density_jitter = (shape.x - 0.5) * 0.020;
-                let active_drop = step(0.97150 + layer_f * 0.00450 + density_jitter, hash21(event_cell + vec2<f32>(11.0, 29.0) * (layer_f + 1.0)));
+                let event_random = hash22(event_cell + vec2<f32>(17.0, 29.0));
+                let event_shape = hash22(event_cell + vec2<f32>(113.0, 61.0));
+                let density_jitter = (event_shape.x - 0.5) * 0.018;
+                let active_drop = step(0.9490 + layer_f * 0.0090 + density_jitter, hash21(event_cell + vec2<f32>(11.0, 29.0) * (layer_f + 1.0)));
                 if (active_drop < 0.5) {
                     continue;
                 }
-                let center = vec2<f32>(0.03, 0.03) + random * 0.94;
-                let wobble = vec2<f32>(
-                    sin(uniforms.time * (0.37 + timing.x * 0.31) + timing.y * TAU),
-                    cos(uniforms.time * (0.29 + timing.y * 0.28) + timing.x * TAU)
-                ) * (0.010 + shape.y * 0.018);
-                let local = p - cell - center - wobble;
-                let distance = length(local);
-                let focus = smoothstep(0.012, 0.18 + shape.x * 0.16, phase);
-                let approach = 1.0 - smoothstep(0.07 + shape.y * 0.08, 0.31 + timing.x * 0.20, phase);
-                let impact = smoothstep(0.035, 0.10 + shape.x * 0.08, phase) * (1.0 - smoothstep(0.18 + timing.y * 0.10, 0.45 + random.y * 0.20, phase));
-                let drop_radius = 0.086 + shape.x * 0.060 - focus * (0.036 + shape.y * 0.040) + layer_f * 0.004;
-                let core = 1.0 - smoothstep(drop_radius * 0.26, drop_radius, distance);
-                let soft_bloom = 1.0 - smoothstep(drop_radius * (0.58 + shape.y * 0.28), drop_radius * (1.65 + timing.x * 0.95), distance);
-                let highlight_offset = vec2<f32>(-0.018 - shape.x * 0.024, -0.020 - shape.y * 0.027) * (0.65 + random.y * 0.60);
-                let highlight = 1.0 - smoothstep(0.0, drop_radius * 0.24, length(local - highlight_offset));
-                let impact_ring = 1.0 - smoothstep(0.0, 0.022 + shape.y * 0.024 + layer_f * 0.004, abs(distance - (0.040 + shape.x * 0.036 + phase * (0.210 + timing.y * 0.160))));
-                // The falling direction converges at the center of the
-                // water/ground. The visible tail trails behind the falling
-                // bead, so it extends away from that vanishing point.
-                let drop_point = (cell + center - layer_offset) / scale;
-                let center_ground_vanish = vec2<f32>(aspect * 0.50, 0.52);
-                let fall_dir = normalize(center_ground_vanish - drop_point + vec2<f32>(0.0001, 0.0001));
-                let tail_skew = (shape.x - 0.5) * 0.34;
-                let tail_dir = normalize(-fall_dir + vec2<f32>(-fall_dir.y, fall_dir.x) * tail_skew);
-                let side_dir = vec2<f32>(-tail_dir.y, tail_dir.x);
-                let side_offset = (random.x - 0.5) * (0.040 + shape.y * 0.090);
-                let tail_length = 1.10 + layer_f * 0.34 + random.y * 0.95 + timing.x * 0.70;
-                let tail_width = 0.034 + shape.x * 0.046 + layer_f * 0.007;
-                let tail_phase = (1.0 - smoothstep(0.42 + timing.y * 0.14, 0.82 + shape.y * 0.16, phase)) * (0.58 + focus * 0.34 + shape.x * 0.38);
-                let tail_wide = tapered_tail(local - side_dir * side_offset, tail_dir, tail_length, tail_width);
-                let tail_core = tapered_tail(local - side_dir * side_offset, tail_dir, tail_length * (0.66 + timing.y * 0.26), tail_width * (0.26 + shape.y * 0.22));
-                let brightness = 0.58 + shape.y * 0.58 + timing.x * 0.28 + layer_f * 0.08;
 
-                beads = max(beads, active_drop * brightness * core * (approach * 1.12 + impact * 0.42));
-                blooms = max(blooms, active_drop * brightness * (soft_bloom * approach * 0.45 + impact_ring * impact * 0.46));
-                glints = max(glints, active_drop * brightness * (highlight * approach * 1.00 + impact_ring * impact * 0.32));
-                trails = max(trails, active_drop * brightness * (tail_wide * 0.76 + tail_core * 1.08) * tail_phase);
+                let center = vec2<f32>(0.06, 0.06) + event_random * 0.88;
+                let local = p - cell - center;
+
+                // Slightly squash the hit vertically so it reads as a wet
+                // surface highlight rather than a falling streak.
+                let q = vec2<f32>(local.x, local.y * 1.16);
+                let distance = length(q);
+
+                let live = smoothstep(0.015, 0.080, phase) * (1.0 - smoothstep(0.24, 0.58, phase));
+                let radius = 0.064 + event_shape.x * 0.036 + layer_f * 0.006;
+                let brightness = 0.94 + event_shape.y * 0.42 + layer_f * 0.06;
+
+                let core = (1.0 - smoothstep(radius * 0.34, radius, distance)) * live;
+                let halo = (1.0 - smoothstep(radius * 0.78, radius * 2.20, distance)) * live;
+                let ring_radius = radius * (1.22 + phase * 1.35);
+                let ring = (1.0 - smoothstep(radius * 0.11, radius * 0.34, abs(distance - ring_radius))) * live * (1.0 - smoothstep(0.18, 0.56, phase));
+
+                // Cheap directional specular: no normalize, no extra texture,
+                // and no tail geometry. Biases the core toward a white glint.
+                let glint_side = saturate(0.55 - (q.x * 0.60 + q.y * 0.90) / max(radius * 2.0, 0.001));
+                let sparkle = core * glint_side * (0.72 + event_shape.y * 0.38);
+
+                cores = max(cores, active_drop * brightness * core);
+                halos = max(halos, active_drop * brightness * halo * 0.54);
+                rings = max(rings, active_drop * brightness * ring * 0.34);
+                sparkles = max(sparkles, active_drop * brightness * sparkle);
             }
         }
     }
 
-    return vec4<f32>(saturate(beads), saturate(blooms), saturate(glints), saturate(trails));
+    return vec4<f32>(saturate(cores), saturate(halos), saturate(rings), saturate(sparkles));
 }
 
 @fragment
@@ -168,7 +144,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let impacts = impact_ripples(uv, aspect);
     let broad = broad_surface_ripples(uv, aspect) * (0.55 + detail_mix * 0.45);
     let rain = rain_impacts(uv, aspect) * (0.60 + detail_mix * 0.40);
-    let drops = top_down_raindrops(uv, aspect) * (0.58 + detail_mix * 0.42);
+    let drops = top_down_raindrops(uv, aspect) * (0.90 + detail_mix * 0.35);
     let shimmer = surface_shimmer(uv, aspect);
 
     let right_water_boost = 1.0 + smoothstep(0.56, 0.98, uv.x) * 0.30;
@@ -178,7 +154,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let glint_color = vec3<f32>(1.0, 1.0, 1.0) * impacts.w * 1.00 * right_water_boost;
     let broad_color = vec3<f32>(0.40, 0.62, 0.88) * broad * 0.40 * right_water_boost;
     let rain_color = vec3<f32>(0.90, 0.97, 1.0) * rain.x * 0.64 + vec3<f32>(0.74, 0.88, 1.0) * rain.y * 0.52 + vec3<f32>(0.50, 0.66, 0.88) * rain.z * 0.24;
-    let drop_color = vec3<f32>(0.98, 1.0, 1.0) * drops.x * 0.72 + vec3<f32>(0.92, 0.98, 1.0) * drops.y * 0.42 + vec3<f32>(1.0, 1.0, 1.0) * drops.z * 0.78 + vec3<f32>(0.94, 0.99, 1.0) * drops.w * 1.08;
+    let drop_color = vec3<f32>(1.0, 1.0, 1.0) * drops.x * 1.05 + vec3<f32>(0.96, 0.98, 1.0) * drops.y * 0.46 + vec3<f32>(0.92, 0.96, 1.0) * drops.z * 0.24 + vec3<f32>(1.0, 1.0, 1.0) * drops.w * 1.18;
     let shimmer_color = vec3<f32>(0.36, 0.60, 0.92) * shimmer.x * 0.18 + vec3<f32>(0.004, 0.014, 0.030) * shimmer.y * 0.10;
     let water_tint = vec3<f32>(0.010, 0.022, 0.048) * 0.12;
 
@@ -188,7 +164,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
         vec3<f32>(1.0, 1.0, 1.0)
     );
     let alpha = clamp(
-        (impacts.x * 0.28 + impacts.y * 0.22 + impacts.z * 0.12 + impacts.w * 0.18 + broad * 0.14 + rain.x * 0.22 + rain.y * 0.18 + rain.z * 0.10 + drops.x * 0.26 + drops.y * 0.17 + drops.z * 0.24 + drops.w * 0.48 + shimmer.x * 0.045 + shimmer.y * 0.030 + 0.032) * intensity * effect_mask,
+        (impacts.x * 0.28 + impacts.y * 0.22 + impacts.z * 0.12 + impacts.w * 0.18 + broad * 0.14 + rain.x * 0.22 + rain.y * 0.18 + rain.z * 0.10 + drops.x * 0.36 + drops.y * 0.12 + drops.z * 0.10 + drops.w * 0.36 + shimmer.x * 0.045 + shimmer.y * 0.030 + 0.032) * intensity * effect_mask,
         0.0,
         0.68
     );

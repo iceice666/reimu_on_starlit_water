@@ -21,7 +21,7 @@ use limes_lock::{
 const IDLE_AFTER: Duration = Duration::from_secs(8);
 const PASSWORD_INPUT_ID: &str = "password-input";
 const SPINNER_FRAME: Duration = Duration::from_millis(16);
-const RESTING_FRAME: Duration = Duration::from_millis(16);
+const RESTING_FRAME: Duration = Duration::from_millis(33);
 const PREVIEW_AUTH_DELAY: Duration = Duration::from_millis(900);
 const WALLPAPER_BYTES: &[u8] = include_bytes!("../../bg.jpg");
 
