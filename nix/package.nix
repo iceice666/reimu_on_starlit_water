@@ -27,7 +27,7 @@ let
   ];
 in
 rustPlatform.buildRustPackage {
-  pname = "reimu-lays-on-water";
+  pname = "reimu-on-starlit-water";
   version = "0.1.0";
 
   src = lib.cleanSource ../.;
@@ -41,18 +41,18 @@ rustPlatform.buildRustPackage {
   buildInputs = [ pam ] ++ guiRuntimeLibs;
 
   postFixup = ''
-    wrapProgram $out/bin/reimu-lays-on-water \
+    wrapProgram $out/bin/reimu-on-starlit-water \
       --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath guiRuntimeLibs}
   '';
 
   meta = {
     description = "Animated Wayland session lock screen";
-    homepage = "https://github.com/iceice666/reimu_lays_on_water";
+    homepage = "https://github.com/iceice666/reimu_on_starlit_water";
     license = with lib.licenses; [
       mit
       asl20
     ];
-    mainProgram = "reimu-lays-on-water";
+    mainProgram = "reimu-on-starlit-water";
     platforms = lib.platforms.linux;
   };
 }

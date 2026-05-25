@@ -8,18 +8,18 @@
 }:
 
 let
-  cfg = config.programs.reimu-lays-on-water;
+  cfg = config.programs.reimu-on-starlit-water;
   defaultPackage = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
 in
 {
-  options.programs.reimu-lays-on-water = {
-    enable = lib.mkEnableOption "Reimu Lays on Water";
+  options.programs.reimu-on-starlit-water = {
+    enable = lib.mkEnableOption "Reimu on Starlit Water";
 
     package = lib.mkOption {
       type = lib.types.package;
       default = defaultPackage;
-      defaultText = lib.literalExpression "reimu-lays-on-water.packages.\${pkgs.stdenv.hostPlatform.system}.default";
-      description = "Package to install for Reimu Lays on Water.";
+      defaultText = lib.literalExpression "reimu-on-starlit-water.packages.\${pkgs.stdenv.hostPlatform.system}.default";
+      description = "Package to install for Reimu on Starlit Water.";
     };
 
     configurePam = lib.mkOption {

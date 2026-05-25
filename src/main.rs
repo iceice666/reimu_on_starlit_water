@@ -10,7 +10,7 @@ use cli::CliMode;
 
 fn main() {
     if let Err(error) = run() {
-        eprintln!("reimu-lays-on-water: {error}");
+        eprintln!("reimu-on-starlit-water: {error}");
         process::exit(1);
     }
 }

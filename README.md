@@ -1,4 +1,4 @@
-# Reimu Lays on Water
+# Reimu on Starlit Water
 
 A standalone animated Wayland session lock screen built with `iced`, `iced_sessionlock`, and `limes-lock`.
 
@@ -43,40 +43,40 @@ Build a release binary:
 
 ```sh
 cargo build --release
-./target/release/reimu-lays-on-water lock
+./target/release/reimu-on-starlit-water lock
 ```
 
-The current Cargo package/binary name is `reimu-lays-on-water`.
+The current Cargo package/binary name is `reimu-on-starlit-water`.
 
 ## Nix
 
 Preview directly from the flake:
 
 ```sh
-nix run github:iceice666/reimu_lays_on_water -- preview
+nix run github:iceice666/reimu_on_starlit_water -- preview
 ```
 
-You can also use `nix run github:iceice666/reimu_lays_on_water#preview`.
+You can also use `nix run github:iceice666/reimu_on_starlit_water#preview`.
 
 Install into a Nix profile:
 
 ```sh
-nix profile install github:iceice666/reimu_lays_on_water
+nix profile install github:iceice666/reimu_on_starlit_water
 ```
 
 Use the NixOS module to install the binary and create the `limes` PAM service:
 
 ```nix
 {
-  inputs.reimu-lays-on-water.url = "github:iceice666/reimu_lays_on_water";
+  inputs.reimu-on-starlit-water.url = "github:iceice666/reimu_on_starlit_water";
 
-  outputs = { nixpkgs, reimu-lays-on-water, ... }: {
+  outputs = { nixpkgs, reimu-on-starlit-water, ... }: {
     nixosConfigurations.host = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
-        reimu-lays-on-water.nixosModules.default
+        reimu-on-starlit-water.nixosModules.default
         {
-          programs.reimu-lays-on-water.enable = true;
+          programs.reimu-on-starlit-water.enable = true;
         }
       ];
     };
@@ -89,7 +89,7 @@ If you only want the package in `pkgs`, add the overlay:
 ```nix
 {
   nixpkgs.overlays = [
-    inputs.reimu-lays-on-water.overlays.default
+    inputs.reimu-on-starlit-water.overlays.default
   ];
 }
 ```

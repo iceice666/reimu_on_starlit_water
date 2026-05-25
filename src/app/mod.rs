@@ -52,7 +52,7 @@ pub(crate) fn run_preview() -> Result<(), String> {
         FullScreenLock::update,
         FullScreenLock::preview_view,
     )
-    .title("Reimu Lays on Water preview")
+    .title("Reimu on Starlit Water preview")
     .window(window::Settings {
         size: Size::new(1280.0, 720.0),
         min_size: Some(Size::new(640.0, 360.0)),

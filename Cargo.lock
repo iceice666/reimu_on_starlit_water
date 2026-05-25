@@ -3317,7 +3317,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "reimu-lays-on-water"
+name = "reimu-on-starlit-water"
 version = "0.1.0"
 dependencies = [
  "bytemuck",

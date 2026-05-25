@@ -1,5 +1,5 @@
 {
-  description = "Reimu Lays on Water Wayland session lock screen";
+  description = "Reimu on Starlit Water Wayland session lock screen";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -36,44 +36,44 @@
           libxrandr
         ];
 
-        reimuLaysOnWater = pkgs.callPackage ./nix/package.nix { };
+        reimuOnStarlitWater = pkgs.callPackage ./nix/package.nix { };
 
         previewApp = pkgs.writeShellApplication {
-          name = "reimu-lays-on-water-preview";
+          name = "reimu-on-starlit-water-preview";
           text = ''
-            exec ${pkgs.lib.getExe reimuLaysOnWater} preview "$@"
+            exec ${pkgs.lib.getExe reimuOnStarlitWater} preview "$@"
           '';
         };
 
         lockApp = pkgs.writeShellApplication {
-          name = "reimu-lays-on-water-lock";
+          name = "reimu-on-starlit-water-lock";
           text = ''
-            exec ${pkgs.lib.getExe reimuLaysOnWater} lock "$@"
+            exec ${pkgs.lib.getExe reimuOnStarlitWater} lock "$@"
           '';
         };
       in
       {
         packages = {
-          default = reimuLaysOnWater;
-          reimu-lays-on-water = reimuLaysOnWater;
+          default = reimuOnStarlitWater;
+          reimu-on-starlit-water = reimuOnStarlitWater;
         };
 
         apps.default = {
           type = "app";
-          program = "${reimuLaysOnWater}/bin/reimu-lays-on-water";
-          meta.description = "Run the Reimu Lays on Water lock screen";
+          program = "${reimuOnStarlitWater}/bin/reimu-on-starlit-water";
+          meta.description = "Run the Reimu on Starlit Water lock screen";
         };
 
         apps.preview = {
           type = "app";
           program = "${pkgs.lib.getExe previewApp}";
-          meta.description = "Preview the Reimu Lays on Water lock screen";
+          meta.description = "Preview the Reimu on Starlit Water lock screen";
         };
 
         apps.lock = {
           type = "app";
           program = "${pkgs.lib.getExe lockApp}";
-          meta.description = "Lock the session with Reimu Lays on Water";
+          meta.description = "Lock the session with Reimu on Starlit Water";
         };
 
         devShells.default = pkgs.mkShell {
@@ -99,7 +99,7 @@
     )
     // {
       overlays.default = final: _prev: {
-        reimu-lays-on-water = final.callPackage ./nix/package.nix { };
+        reimu-on-starlit-water = final.callPackage ./nix/package.nix { };
       };
 
       nixosModules.default = import ./nix/module.nix { inherit self; };

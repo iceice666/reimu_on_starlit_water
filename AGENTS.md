@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repository.
 
 ## Project overview
 
-Reimu Lays on Water is a standalone Rust Wayland session lock screen built with
+Reimu on Starlit Water is a standalone Rust Wayland session lock screen built with
 `iced`, `iced_sessionlock`, and `limes-lock`.
 
 It has two runtime modes:
