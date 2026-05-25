@@ -12,7 +12,13 @@
       nixpkgs,
       flake-utils,
     }:
-    flake-utils.lib.eachDefaultSystem (
+    let
+      supportedSystems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+    in
+    flake-utils.lib.eachSystem supportedSystems (
       system:
       let
         pkgs = import nixpkgs {
@@ -30,13 +36,20 @@
           libxrandr
         ];
 
-        reimuLaysOnWater = pkgs.rustPlatform.buildRustPackage {
-          pname = "reimu-lays-on-water";
-          version = "0.1.0";
-          src = pkgs.lib.cleanSource ./.;
-          cargoLock.lockFile = ./Cargo.lock;
-          nativeBuildInputs = [ pkgs.pkg-config ];
-          buildInputs = [ pkgs.pam ] ++ guiRuntimeLibs;
+        reimuLaysOnWater = pkgs.callPackage ./nix/package.nix { };
+
+        previewApp = pkgs.writeShellApplication {
+          name = "reimu-lays-on-water-preview";
+          text = ''
+            exec ${pkgs.lib.getExe reimuLaysOnWater} preview "$@"
+          '';
+        };
+
+        lockApp = pkgs.writeShellApplication {
+          name = "reimu-lays-on-water-lock";
+          text = ''
+            exec ${pkgs.lib.getExe reimuLaysOnWater} lock "$@"
+          '';
         };
       in
       {
@@ -51,16 +64,31 @@
           meta.description = "Run the Reimu Lays on Water lock screen";
         };
 
+        apps.preview = {
+          type = "app";
+          program = "${pkgs.lib.getExe previewApp}";
+          meta.description = "Preview the Reimu Lays on Water lock screen";
+        };
+
+        apps.lock = {
+          type = "app";
+          program = "${pkgs.lib.getExe lockApp}";
+          meta.description = "Lock the session with Reimu Lays on Water";
+        };
+
         devShells.default = pkgs.mkShell {
-          packages = with pkgs; [
-            cargo
-            clippy
-            pam
-            pkg-config
-            rust-analyzer
-            rustc
-            rustfmt
-          ] ++ guiRuntimeLibs;
+          packages =
+            with pkgs;
+            [
+              cargo
+              clippy
+              pam
+              pkg-config
+              rust-analyzer
+              rustc
+              rustfmt
+            ]
+            ++ guiRuntimeLibs;
 
           env = {
             RUST_BACKTRACE = "1";
@@ -68,5 +96,12 @@
           };
         };
       }
-    );
+    )
+    // {
+      overlays.default = final: _prev: {
+        reimu-lays-on-water = final.callPackage ./nix/package.nix { };
+      };
+
+      nixosModules.default = import ./nix/module.nix { inherit self; };
+    };
 }

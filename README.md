@@ -48,6 +48,52 @@ cargo build --release
 
 The current Cargo package/binary name is `reimu-lays-on-water`.
 
+## Nix
+
+Preview directly from the flake:
+
+```sh
+nix run github:iceice666/reimu_lays_on_water -- preview
+```
+
+You can also use `nix run github:iceice666/reimu_lays_on_water#preview`.
+
+Install into a Nix profile:
+
+```sh
+nix profile install github:iceice666/reimu_lays_on_water
+```
+
+Use the NixOS module to install the binary and create the `limes` PAM service:
+
+```nix
+{
+  inputs.reimu-lays-on-water.url = "github:iceice666/reimu_lays_on_water";
+
+  outputs = { nixpkgs, reimu-lays-on-water, ... }: {
+    nixosConfigurations.host = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        reimu-lays-on-water.nixosModules.default
+        {
+          programs.reimu-lays-on-water.enable = true;
+        }
+      ];
+    };
+  };
+}
+```
+
+If you only want the package in `pkgs`, add the overlay:
+
+```nix
+{
+  nixpkgs.overlays = [
+    inputs.reimu-lays-on-water.overlays.default
+  ];
+}
+```
+
 ## PAM
 
 Lock mode authenticates the current `$USER` through `limes-lock`, which uses the PAM service name `limes`. Configure `/etc/pam.d/limes` using the policy appropriate for your distribution, for example by including the same authentication stack used by your login or screen-locking tools.
