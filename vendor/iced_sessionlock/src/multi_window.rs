@@ -47,7 +47,7 @@ use iced_program::Program;
 // a dispatch loop, another is listen loop
 pub fn run<P>(
     program: P,
-    settings: Settings,
+    mut settings: Settings,
     compositor_settings: iced_graphics::Settings,
 ) -> Result<(), Error>
 where
@@ -119,6 +119,8 @@ where
     #[cfg(not(all(feature = "linux-theme-detection", target_os = "linux")))]
     let system_theme = Mode::default();
 
+    let mut locked_sender = settings.locked_sender.take();
+
     let ev: WindowState<()> = sessionlockev::WindowState::new()
         .with_use_display_handle(true)
         .with_connection(settings.with_connection)
@@ -156,6 +158,11 @@ where
             SessionLockEvent::UserEvent(event) => {
                 waiting_session_lock_events
                     .push_back((id, IcedSessionLockEvent::UserAction(event)));
+            }
+            SessionLockEvent::Locked => {
+                if let Some(sender) = locked_sender.take() {
+                    let _ = sender.send(());
+                }
             }
             _ => {}
         }

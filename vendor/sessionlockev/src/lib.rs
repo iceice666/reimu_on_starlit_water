@@ -545,6 +545,7 @@ pub struct WindowState<T> {
     viewporter: Option<WpViewporter>,
     lock: Option<ExtSessionLockV1>,
     lock_confirmed: bool,
+    lock_reported: bool,
     unlock_requested: bool,
     lock_error: Option<SessionLockEventError>,
     fractional_scale_manager: Option<WpFractionalScaleManagerV1>,
@@ -669,6 +670,7 @@ impl<T> Default for WindowState<T> {
             fractional_scale_manager: None,
             lock: None,
             lock_confirmed: false,
+            lock_reported: false,
             unlock_requested: false,
             lock_error: None,
             globals: None,
@@ -1353,6 +1355,10 @@ impl<T: 'static> WindowState<T> {
                 return Err(error);
             }
             let event_handler = &mut r_window_state.fun;
+            if window_state.lock_confirmed && !window_state.lock_reported {
+                window_state.lock_reported = true;
+                window_state.handle_event(&mut *event_handler, SessionLockEvent::Locked, None);
+            }
             if process_window_state(window_state, event_handler) {
                 break;
             }

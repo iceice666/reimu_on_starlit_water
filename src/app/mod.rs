@@ -3,6 +3,12 @@ mod view;
 use std::{
     collections::VecDeque,
     env,
+    fs::{File, OpenOptions},
+    io::Read,
+    os::fd::{AsRawFd, FromRawFd, RawFd},
+    path::PathBuf,
+    process,
+    sync::mpsc,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
@@ -10,13 +16,17 @@ use std::{
 use chrono::{Datelike, Local, Weekday};
 use iced::widget::operation::focus;
 use iced::{Event, Size, Subscription, Task, event, keyboard, mouse, time, window};
-use iced_sessionlock::{actions::UnLockAction, application as sessionlock_application};
+use iced_sessionlock::{
+    Settings as SessionlockSettings, actions::UnLockAction, application as sessionlock_application,
+};
 use limes_lock::{
     AuthFailure as ProtoAuthFailure, AuthOutcome, AuthRequest, Config, EventBus, LockRuntime,
     LockState, NoopDisplayBackend, NoopLockBackend, StderrEventSink,
     common::EventSink,
     proto::{LimesEvent, PamMessageKind},
 };
+
+use crate::cli::LockOptions;
 
 const IDLE_AFTER: Duration = Duration::from_secs(8);
 const PASSWORD_INPUT_ID: &str = "password-input";
@@ -25,7 +35,18 @@ const RESTING_FRAME: Duration = Duration::from_millis(33);
 const PREVIEW_AUTH_DELAY: Duration = Duration::from_millis(900);
 const WALLPAPER_BYTES: &[u8] = include_bytes!("../../bg.jpg");
 
-pub(crate) fn run_lock() -> Result<(), String> {
+pub(crate) fn run_lock(options: LockOptions) -> Result<(), String> {
+    let _single_instance = SingleInstanceLock::acquire()?;
+    let mut daemon_ready = DaemonReady::prepare(options.daemonize)?;
+
+    if options.daemonize
+        && let Some(parent) = daemon_ready.fork()?
+    {
+        return parent.wait();
+    }
+
+    let ready = ReadyNotifier::new(options.ready_fd, daemon_ready.take_child_ready_fd());
+
     let pam_messages = PamMessageQueue::default();
     let runtime = Arc::new(
         LockRuntime::from_env()
@@ -36,11 +57,22 @@ pub(crate) fn run_lock() -> Result<(), String> {
         .events()
         .subscribe(Arc::new(PamMessageSink::new(pam_messages.clone())));
 
+    let (locked_sender, locked_receiver) = mpsc::channel();
+    let settings = SessionlockSettings {
+        locked_sender: Some(locked_sender),
+        ..SessionlockSettings::default()
+    };
+    std::thread::spawn(move || {
+        let _ = locked_receiver.recv();
+        ready.notify();
+    });
+
     sessionlock_application(
         move || FullScreenLock::new_lock(Arc::clone(&runtime), pam_messages.clone()),
         FullScreenLock::update,
         FullScreenLock::view,
     )
+    .settings(settings)
     .subscription(FullScreenLock::subscription)
     .run()
     .map_err(|error| error.to_string())
@@ -118,6 +150,200 @@ struct PamStatusMessage {
 #[derive(Debug, Clone, Default)]
 struct PamMessageQueue {
     messages: Arc<Mutex<VecDeque<PamStatusMessage>>>,
+}
+
+struct SingleInstanceLock {
+    file: File,
+}
+
+impl SingleInstanceLock {
+    fn acquire() -> Result<Self, String> {
+        let path = lock_file_path()?;
+        let file = OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .read(true)
+            .write(true)
+            .open(&path)
+            .map_err(|error| format!("cannot open lock file {}: {error}", path.display()))?;
+        let result = unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) };
+        if result == 0 {
+            return Ok(Self { file });
+        }
+
+        let error = std::io::Error::last_os_error();
+        if error.raw_os_error() == Some(libc::EWOULDBLOCK)
+            || error.raw_os_error() == Some(libc::EAGAIN)
+        {
+            eprintln!("reimu-on-starlit-water: lock screen is already running");
+            process::exit(0);
+        }
+
+        Err(format!(
+            "cannot acquire lock file {}: {error}",
+            path.display()
+        ))
+    }
+}
+
+impl Drop for SingleInstanceLock {
+    fn drop(&mut self) {
+        unsafe {
+            libc::flock(self.file.as_raw_fd(), libc::LOCK_UN);
+        }
+    }
+}
+
+fn lock_file_path() -> Result<PathBuf, String> {
+    let runtime_dir = env::var_os("XDG_RUNTIME_DIR")
+        .ok_or_else(|| "XDG_RUNTIME_DIR is not set; cannot create lock guard".to_owned())?;
+    Ok(PathBuf::from(runtime_dir).join("reimu-on-starlit-water.lock"))
+}
+
+struct ReadyNotifier {
+    fds: Vec<RawFd>,
+}
+
+impl ReadyNotifier {
+    fn new(ready_fd: Option<i32>, daemon_fd: Option<RawFd>) -> Self {
+        let mut fds = Vec::new();
+        if let Some(fd) = ready_fd {
+            fds.push(fd);
+        }
+        if let Some(fd) = daemon_fd {
+            fds.push(fd);
+        }
+        Self { fds }
+    }
+
+    fn notify(mut self) {
+        for fd in self.fds.drain(..) {
+            unsafe {
+                libc::write(fd, b"\n".as_ptr().cast(), 1);
+                libc::close(fd);
+            }
+        }
+    }
+}
+
+impl Drop for ReadyNotifier {
+    fn drop(&mut self) {
+        for fd in self.fds.drain(..) {
+            unsafe {
+                libc::close(fd);
+            }
+        }
+    }
+}
+
+struct DaemonReady {
+    read_fd: Option<RawFd>,
+    write_fd: Option<RawFd>,
+}
+
+struct DaemonParent {
+    read_fd: RawFd,
+    child_pid: libc::pid_t,
+}
+
+impl DaemonReady {
+    fn prepare(daemonize: bool) -> Result<Self, String> {
+        if !daemonize {
+            return Ok(Self {
+                read_fd: None,
+                write_fd: None,
+            });
+        }
+
+        let mut fds = [0; 2];
+        let result = unsafe { libc::pipe(fds.as_mut_ptr()) };
+        if result != 0 {
+            return Err(format!(
+                "cannot create daemon readiness pipe: {}",
+                std::io::Error::last_os_error()
+            ));
+        }
+
+        Ok(Self {
+            read_fd: Some(fds[0]),
+            write_fd: Some(fds[1]),
+        })
+    }
+
+    fn take_child_ready_fd(&mut self) -> Option<RawFd> {
+        self.write_fd.take()
+    }
+
+    fn fork(&mut self) -> Result<Option<DaemonParent>, String> {
+        let Some(read_fd) = self.read_fd.take() else {
+            return Ok(None);
+        };
+        let write_fd = self
+            .write_fd
+            .take()
+            .expect("daemon mode should have write fd");
+
+        let pid = unsafe { libc::fork() };
+        if pid < 0 {
+            unsafe {
+                libc::close(read_fd);
+                libc::close(write_fd);
+            }
+            return Err(format!(
+                "cannot daemonize: {}",
+                std::io::Error::last_os_error()
+            ));
+        }
+
+        if pid > 0 {
+            unsafe {
+                libc::close(write_fd);
+            }
+            return Ok(Some(DaemonParent {
+                read_fd,
+                child_pid: pid,
+            }));
+        }
+
+        unsafe {
+            libc::close(read_fd);
+            libc::setsid();
+        }
+        Ok(None)
+    }
+}
+
+impl Drop for DaemonReady {
+    fn drop(&mut self) {
+        if let Some(fd) = self.read_fd.take() {
+            unsafe {
+                libc::close(fd);
+            }
+        }
+        if let Some(fd) = self.write_fd.take() {
+            unsafe {
+                libc::close(fd);
+            }
+        }
+    }
+}
+
+impl DaemonParent {
+    fn wait(self) -> Result<(), String> {
+        let mut file = unsafe { File::from_raw_fd(self.read_fd) };
+        let mut byte = [0; 1];
+        match file.read(&mut byte) {
+            Ok(1) => Ok(()),
+            Ok(_) => {
+                let mut status = 0;
+                unsafe {
+                    libc::waitpid(self.child_pid, &mut status, 0);
+                }
+                Err("lock daemon exited before the compositor confirmed locking".to_owned())
+            }
+            Err(error) => Err(format!("cannot wait for lock daemon readiness: {error}")),
+        }
+    }
 }
 
 impl PamMessageQueue {

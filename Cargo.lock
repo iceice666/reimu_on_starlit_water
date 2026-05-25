@@ -3323,6 +3323,7 @@ dependencies = [
  "iced",
  "iced_sessionlock",
  "image",
+ "libc",
  "limes-lock",
  "tiny-skia",
  "tokio",

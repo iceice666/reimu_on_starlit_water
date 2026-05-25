@@ -53,6 +53,8 @@ pub enum SessionLockEvent<'a, T, Message> {
     NormalDispatch,
     /// It return the event you passed with message_receiver, and return it back.
     UserEvent(Message),
+    /// The compositor has confirmed that the session is locked.
+    Locked,
 }
 
 /// the return data

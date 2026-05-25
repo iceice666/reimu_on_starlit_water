@@ -1,6 +1,7 @@
 use iced_core::{Font, Pixels};
 use sessionlockev::reexport::wayland_client::Connection;
 use std::borrow::Cow;
+use std::sync::mpsc;
 
 #[derive(Debug)]
 pub struct Settings {
@@ -37,6 +38,9 @@ pub struct Settings {
     /// set the used wayland connection, all wayland object will share it, and they can be used by
     /// each other.
     pub with_connection: Option<Connection>,
+
+    /// Notified once the compositor confirms that the session is locked.
+    pub locked_sender: Option<mpsc::Sender<()>>,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -47,6 +51,7 @@ impl Default for Settings {
             default_text_size: Pixels(16.0),
             antialiasing: false,
             with_connection: None,
+            locked_sender: None,
         }
     }
 }
