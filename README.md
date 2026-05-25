@@ -13,6 +13,7 @@ The project displays the bundled `bg.jpg` wallpaper, keeps the image handle stab
 - Enter submits to PAM, including empty submissions for passwordless modules such as fingerprint authentication.
 - Success unlocks the compositor session; failure returns to the prompt with an error tint.
 - Escape clears the prompt and returns to idle; inactivity returns to idle automatically.
+- Duplicate `lock` invocations are ignored while one instance is already running.
 
 ## Requirements
 
@@ -35,6 +36,33 @@ Run the real session lock:
 
 ```sh
 cargo run -- lock
+```
+
+For idle-daemon sleep hooks, use daemon mode so the launcher returns after the
+compositor confirms the session is locked:
+
+```sh
+reimu-on-starlit-water lock --daemonize
+```
+
+Lock mode supports these options:
+
+```text
+-f, --daemonize      Fork into the background after the compositor confirms locking
+    --ready-fd <fd>  Write a newline to fd after the compositor confirms locking
+```
+
+Only one real lock instance runs at a time. A second `lock` command exits
+successfully without creating another lock surface, which prevents repeated
+idle hooks from stacking several lock screens.
+
+When using `swayidle`, pair `-w` with daemon mode so sleep is delayed only until
+the compositor has actually locked the session:
+
+```sh
+swayidle -w \
+  timeout 300 'reimu-on-starlit-water lock --daemonize' \
+  before-sleep 'reimu-on-starlit-water lock --daemonize'
 ```
 
 The shader runs at the high quality setting by default.
