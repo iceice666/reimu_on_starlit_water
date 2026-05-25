@@ -11,7 +11,7 @@ use crate::style::{input_shell, password_input_style};
 
 use super::{FullScreenLock, Message, PASSWORD_INPUT_ID, ScreenState};
 
-const RAIN_INTENSITY: f32 = 0.90;
+const RAIN_INTENSITY: f32 = 0.96;
 const INPUT_WIDTH: f32 = 200.0;
 const INPUT_HEIGHT: f32 = 45.0;
 const PASSWORD_TEXT_SIZE: f32 = 20.0;

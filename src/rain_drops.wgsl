@@ -17,14 +17,14 @@ fn rain_impacts(uv: vec2<f32>, aspect: f32) -> vec3<f32> {
             for (var x: i32 = -1; x <= 1; x = x + 1) {
                 let cell = base_cell + vec2<f32>(f32(x), f32(y));
                 let base_random = hash22(cell + vec2<f32>(17.0 + layer_f * 13.0, 41.0 - layer_f * 9.0));
-                let cycle = uniforms.time * (2.2 + base_random.y * 5.8 + layer_f * 0.72) + base_random.x;
+                let cycle = uniforms.time * (0.92 + base_random.y * 2.55 + layer_f * 0.30) + base_random.x;
                 let event_id = floor(cycle);
                 let phase = fract(cycle);
                 let event_cell = cell + vec2<f32>(event_id * 37.13, event_id * -19.71);
                 let random = hash22(event_cell + vec2<f32>(17.0 + layer_f * 13.0, 41.0 - layer_f * 9.0));
                 let random_b = hash22(event_cell + vec2<f32>(83.0 - layer_f * 5.0, 23.0 + layer_f * 17.0));
                 let density_jitter = (random_b.x - 0.5) * 0.018;
-                let present = step(0.96125 + layer_f * 0.00675 + density_jitter, hash21(event_cell + vec2<f32>(9.2, 4.7) * (layer_f + 1.0)));
+                let present = step(0.94400 + layer_f * 0.00600 + density_jitter, hash21(event_cell + vec2<f32>(9.2, 4.7) * (layer_f + 1.0)));
                 if (present < 0.5) {
                     continue;
                 }
@@ -32,17 +32,17 @@ fn rain_impacts(uv: vec2<f32>, aspect: f32) -> vec3<f32> {
                 let local = (grid - cell - center) * vec2<f32>(grid_scale.y / grid_scale.x, 1.0);
                 let distance = length(local);
                 let pulse = 0.72 + random_b.x * 0.56;
-                let approach = (1.0 - smoothstep(0.025 + random_b.y * 0.030, 0.22 + random.x * 0.16, phase)) * pulse;
-                let ring_fade = smoothstep(0.020, 0.12 + random_b.x * 0.07, phase) * (1.0 - smoothstep(0.30 + random.y * 0.16, 0.72 + random_b.y * 0.18, phase));
-                let pin_radius = 0.024 + random.x * 0.024 + layer_f * 0.006;
-                let bead_radius = 0.080 + random_b.y * 0.070 + layer_f * 0.026;
-                let spray_radius = 0.170 + random.x * 0.140;
+                let approach = (1.0 - smoothstep(0.030 + random_b.y * 0.032, 0.28 + random.x * 0.18, phase)) * pulse;
+                let ring_fade = smoothstep(0.018, 0.16 + random_b.x * 0.08, phase) * (1.0 - smoothstep(0.36 + random.y * 0.18, 0.82 + random_b.y * 0.16, phase));
+                let pin_radius = 0.030 + random.x * 0.028 + layer_f * 0.008;
+                let bead_radius = 0.096 + random_b.y * 0.082 + layer_f * 0.032;
+                let spray_radius = 0.205 + random.x * 0.155;
                 let pin = 1.0 - smoothstep(0.000, pin_radius, distance);
                 let bead = 1.0 - smoothstep(pin_radius * 0.92, bead_radius, distance);
                 let spray = 1.0 - smoothstep(bead_radius * 0.70, spray_radius, distance);
-                let ring_radius = 0.022 + random_b.x * 0.030 + phase * (0.24 + random.x * 0.19);
-                let tiny_ring = local_ring_mask(local, ring_radius, 0.014 + random_b.y * 0.020 + phase * 0.030);
-                let crown = local_ring_mask(local, 0.045 + random.x * 0.055 + phase * (0.035 + random_b.y * 0.065), 0.020 + random_b.x * 0.020) * (1.0 - smoothstep(0.10, 0.34 + random.y * 0.18, phase));
+                let ring_radius = 0.026 + random_b.x * 0.034 + phase * (0.27 + random.x * 0.21);
+                let tiny_ring = local_ring_mask(local, ring_radius, 0.018 + random_b.y * 0.024 + phase * 0.036);
+                let crown = local_ring_mask(local, 0.052 + random.x * 0.064 + phase * (0.044 + random_b.y * 0.074), 0.026 + random_b.x * 0.024) * (1.0 - smoothstep(0.14, 0.42 + random.y * 0.18, phase));
                 let brightness = 0.62 + random_b.y * 0.70 + layer_f * 0.14;
 
                 pins = max(pins, present * brightness * (pin * approach + bead * approach * 0.38));
@@ -79,12 +79,12 @@ fn top_down_raindrops(uv: vec2<f32>, aspect: f32) -> vec4<f32> {
                 // Keep the pre-gate work cheap. Only compute shape/detail
                 // randomness after the cell is known to be active.
                 let base_random = hash22(cell + vec2<f32>(71.0 + layer_f * 13.0, 53.0 - layer_f * 7.0));
-                let cycle = uniforms.time * (1.55 + base_random.y * 3.85 + layer_f * 0.38) + base_random.x;
+                let cycle = uniforms.time * (0.66 + base_random.y * 1.62 + layer_f * 0.18) + base_random.x;
                 let event_id = floor(cycle);
                 let phase = fract(cycle);
                 let event_cell = cell + vec2<f32>(event_id * 41.97, event_id * -23.39);
                 let active_drop = step(
-                    0.9535 + layer_f * 0.0100,
+                    0.9340 + layer_f * 0.0080,
                     hash21(event_cell + vec2<f32>(11.0, 29.0) * (layer_f + 1.0))
                 );
 
@@ -94,6 +94,7 @@ fn top_down_raindrops(uv: vec2<f32>, aspect: f32) -> vec4<f32> {
 
                 let event_random = hash22(event_cell + vec2<f32>(17.0, 29.0));
                 let event_shape = hash22(event_cell + vec2<f32>(113.0, 61.0));
+                let tail_shape = hash22(event_cell + vec2<f32>(197.0, 43.0));
 
                 let center = vec2<f32>(0.05, 0.05) + event_random * 0.90;
                 let local = p - cell - center;
@@ -102,9 +103,9 @@ fn top_down_raindrops(uv: vec2<f32>, aspect: f32) -> vec4<f32> {
                 let q = vec2<f32>(local.x, local.y * 1.10);
                 let distance = length(q);
 
-                let live = smoothstep(0.010, 0.070, phase) * (1.0 - smoothstep(0.32, 0.72, phase));
-                let tail_live = 1.0 - smoothstep(0.42, 0.90, phase);
-                let radius = 0.052 + event_shape.x * 0.034 + layer_f * 0.005;
+                let live = smoothstep(0.012, 0.105, phase) * (1.0 - smoothstep(0.40, 0.82, phase));
+                let tail_live = smoothstep(0.000, 0.065, phase) * (1.0 - smoothstep(0.50, 0.96, phase));
+                let radius = 0.064 + event_shape.x * 0.042 + layer_f * 0.008;
                 let brightness = 0.82 + event_shape.y * 0.46 + layer_f * 0.06;
 
                 let core = (1.0 - smoothstep(radius * 0.30, radius, distance)) * live;
@@ -125,24 +126,25 @@ fn top_down_raindrops(uv: vec2<f32>, aspect: f32) -> vec4<f32> {
                 let along = dot(tail_local, tail_dir);
                 let across = abs(dot(tail_local, side_dir));
 
-                let tail_length = 1.18 + event_shape.y * 0.48 + layer_f * 0.28;
-                let tail_width = 0.026 + event_shape.x * 0.020 + layer_f * 0.004;
+                let extra_long = smoothstep(0.76, 1.0, tail_shape.y) * 1.35;
+                let tail_length = 1.72 + tail_shape.x * 2.36 + extra_long + layer_f * 0.58;
+                let tail_width = 0.038 + event_shape.x * 0.026 + layer_f * 0.006;
                 let tail_t = saturate(along / max(tail_length, 0.001));
 
                 let axial = smoothstep(-tail_width * 0.45, tail_width * 0.25, along) *
-                    (1.0 - smoothstep(tail_length * 0.72, tail_length, along));
-                let tapered_width = tail_width * (1.25 - tail_t * 0.95);
-                let lateral = 1.0 - smoothstep(tapered_width * 0.42, tapered_width, across);
-                let trail = axial * lateral * (1.0 - tail_t * 0.62) * tail_live;
+                    (1.0 - smoothstep(tail_length * 0.80, tail_length, along));
+                let tapered_width = tail_width * (1.52 - tail_t * 0.82);
+                let lateral = 1.0 - smoothstep(tapered_width * 0.30, tapered_width, across);
+                let trail = axial * lateral * (1.0 - tail_t * 0.38) * tail_live;
 
                 // Cheap directional glint on the bead.
                 let glint_side = saturate(0.55 - (q.x * 0.58 + q.y * 0.86) / max(radius * 2.0, 0.001));
                 let glint = core * glint_side * (0.72 + event_shape.y * 0.36);
 
                 cores = max(cores, active_drop * brightness * core);
-                halos = max(halos, active_drop * brightness * halo * 0.38);
+                halos = max(halos, active_drop * brightness * halo * 0.44);
                 glints = max(glints, active_drop * brightness * glint);
-                trails = max(trails, active_drop * brightness * trail * 0.92);
+                trails = max(trails, active_drop * brightness * trail * 1.08);
             }
         }
     }
@@ -160,7 +162,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     }
 
     let vignette = 1.0 - smoothstep(0.50, 1.02, distance(uv, vec2<f32>(0.5, 0.50)));
-    let center_soften = 1.0 - smoothstep(0.00, 0.34, length(water_space(uv, aspect) / vec2<f32>(1.20, 0.78))) * 0.18;
+    let center_soften = 1.0 - smoothstep(0.00, 0.36, length(water_space(uv, aspect) / vec2<f32>(1.20, 0.78))) * 0.22;
     let water_mask = water_visibility(uv, aspect);
     let effect_mask = vignette * center_soften * water_mask;
     if (effect_mask < 0.02) {
@@ -174,20 +176,20 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let drops = top_down_raindrops(uv, aspect) * (0.72 + detail_mix * 0.28);
     let shimmer = surface_shimmer(uv, aspect);
 
-    let right_water_boost = 1.0 + smoothstep(0.56, 0.98, uv.x) * 0.30;
-    let ring_color = vec3<f32>(0.62, 0.82, 1.0) * impacts.x * 0.70 * right_water_boost;
-    let splash_color = vec3<f32>(0.92, 0.98, 1.0) * impacts.y * 0.80 * right_water_boost;
-    let halo_color = vec3<f32>(0.28, 0.48, 0.72) * impacts.z * 1.06 * right_water_boost;
-    let glint_color = vec3<f32>(1.0, 1.0, 1.0) * impacts.w * 1.00 * right_water_boost;
-    let broad_color = vec3<f32>(0.40, 0.62, 0.88) * broad * 0.40 * right_water_boost;
-    let rain_color = vec3<f32>(0.90, 0.97, 1.0) * rain.x * 0.64 + vec3<f32>(0.74, 0.88, 1.0) * rain.y * 0.52 + vec3<f32>(0.50, 0.66, 0.88) * rain.z * 0.24;
+    let right_water_boost = 1.0 + smoothstep(0.56, 0.98, uv.x) * 0.26;
+    let ring_color = vec3<f32>(0.54, 0.76, 1.0) * impacts.x * 0.74 * right_water_boost;
+    let splash_color = vec3<f32>(0.88, 0.97, 1.0) * impacts.y * 0.70 * right_water_boost;
+    let halo_color = vec3<f32>(0.22, 0.43, 0.72) * impacts.z * 1.18 * right_water_boost;
+    let glint_color = vec3<f32>(0.94, 0.99, 1.0) * impacts.w * 0.96 * right_water_boost;
+    let broad_color = vec3<f32>(0.30, 0.55, 0.90) * broad * 0.50 * right_water_boost;
+    let rain_color = vec3<f32>(0.86, 0.96, 1.0) * rain.x * 0.64 + vec3<f32>(0.66, 0.84, 1.0) * rain.y * 0.52 + vec3<f32>(0.42, 0.62, 0.88) * rain.z * 0.26;
     let drop_color =
         vec3<f32>(1.0, 1.0, 1.0) * drops.x * 0.82 +
         vec3<f32>(0.86, 0.94, 1.0) * drops.y * 0.30 +
         vec3<f32>(1.0, 1.0, 1.0) * drops.z * 0.72 +
-        vec3<f32>(0.78, 0.90, 1.0) * drops.w * 0.92;
-    let shimmer_color = vec3<f32>(0.36, 0.60, 0.92) * shimmer.x * 0.18 + vec3<f32>(0.004, 0.014, 0.030) * shimmer.y * 0.10;
-    let water_tint = vec3<f32>(0.010, 0.022, 0.048) * 0.12;
+        vec3<f32>(0.70, 0.86, 1.0) * drops.w * 0.98;
+    let shimmer_color = vec3<f32>(0.44, 0.68, 1.0) * shimmer.x * 0.24 + vec3<f32>(0.002, 0.012, 0.034) * shimmer.y * 0.12;
+    let water_tint = vec3<f32>(0.006, 0.018, 0.052) * 0.16;
 
     let color = clamp(
         (ring_color + splash_color + halo_color + glint_color + broad_color + rain_color + drop_color + shimmer_color + water_tint) * effect_mask,
@@ -195,9 +197,9 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
         vec3<f32>(1.0, 1.0, 1.0)
     );
     let alpha = clamp(
-        (impacts.x * 0.28 + impacts.y * 0.22 + impacts.z * 0.12 + impacts.w * 0.18 + broad * 0.14 + rain.x * 0.22 + rain.y * 0.18 + rain.z * 0.10 + drops.x * 0.25 + drops.y * 0.08 + drops.z * 0.16 + drops.w * 0.30 + shimmer.x * 0.045 + shimmer.y * 0.030 + 0.032) * intensity * effect_mask,
+        (impacts.x * 0.26 + impacts.y * 0.19 + impacts.z * 0.13 + impacts.w * 0.17 + broad * 0.17 + rain.x * 0.23 + rain.y * 0.19 + rain.z * 0.11 + drops.x * 0.27 + drops.y * 0.09 + drops.z * 0.16 + drops.w * 0.32 + shimmer.x * 0.060 + shimmer.y * 0.034 + 0.030) * intensity * effect_mask,
         0.0,
-        0.68
+        0.72
     );
 
     return vec4<f32>(color, alpha);

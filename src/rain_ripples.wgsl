@@ -115,14 +115,15 @@ fn crescent_highlight(point: vec2<f32>, center: vec2<f32>, seed: f32, life: f32)
 fn surface_shimmer(uv: vec2<f32>, aspect: f32) -> vec2<f32> {
     let point = water_space(uv, aspect);
     let time = uniforms.time;
-    let wave_a = sin(dot(point, vec2<f32>(10.0, 6.5)) + time * 0.72);
-    let wave_b = sin(dot(point, vec2<f32>(-6.5, 13.5)) - time * 0.58 + wave_a * 0.42);
-    let wave_c = sin(dot(point, vec2<f32>(25.0, -18.0)) + time * 1.36 + wave_b * 0.65);
-    let fine = wave_a * 0.44 + wave_b * 0.34 + wave_c * 0.22;
-    let thread = sin(dot(point, vec2<f32>(48.0, 33.0)) + time * 2.1 + fine * 1.4);
+    let wave_a = sin(dot(point, vec2<f32>(8.5, 5.2)) + time * 0.46);
+    let wave_b = sin(dot(point, vec2<f32>(-5.8, 11.2)) - time * 0.38 + wave_a * 0.36);
+    let wave_c = sin(dot(point, vec2<f32>(22.0, -15.5)) + time * 1.02 + wave_b * 0.58);
+    let fine = wave_a * 0.46 + wave_b * 0.36 + wave_c * 0.18;
+    let thread = sin(dot(point, vec2<f32>(54.0, 37.0)) + time * 1.55 + fine * 1.2);
+    let soft_glow = smoothstep(0.30, 0.94, fine) * smoothstep(-0.85, 0.40, wave_b);
 
-    let highlights = smoothstep(0.58, 0.98, fine) * 0.82 + smoothstep(0.86, 1.0, thread) * 0.20;
-    let troughs = smoothstep(0.56, 0.96, -fine) * 0.55;
+    let highlights = smoothstep(0.62, 1.0, fine) * 0.58 + smoothstep(0.90, 1.0, thread) * 0.18 + soft_glow * 0.14;
+    let troughs = smoothstep(0.58, 0.98, -fine) * 0.46;
 
     return vec2<f32>(saturate(highlights), saturate(troughs));
 }
@@ -159,23 +160,23 @@ fn impact_ripples(uv: vec2<f32>, aspect: f32) -> vec4<f32> {
             let fade_in = smoothstep(0.02, 0.13, life);
             let fade_out = 1.0 - smoothstep(0.58, 1.0, life);
             let fade = fade_in * fade_out;
-            let radius = 0.014 + grow * (0.21 + random.y * 0.14);
-            let width = 0.0045 + life * 0.018;
+            let radius = 0.014 + grow * (0.23 + random.y * 0.16);
+            let width = 0.0038 + life * 0.016;
             let arc = broken_arc(point, center, random.x, life);
             let main_ring = ring_mask(point, center, radius, width) * arc;
-            let inner_ring = ring_mask(point, center, max(radius * 0.55 - 0.010, 0.0), width * 0.72) * (1.0 - smoothstep(0.18, 0.58, life));
-            let outer_ring = ring_mask(point, center, radius * 1.27 + 0.020, width * 1.35) * broken_arc(point, center, random.y + 0.37, life) * (1.0 - smoothstep(0.24, 0.92, life));
-            let crown = ring_mask(point, center, 0.020 + life * 0.034, 0.008 + life * 0.006) * broken_arc(point, center, random.x + 0.61, life) * (1.0 - smoothstep(0.10, 0.36, life));
+            let inner_ring = ring_mask(point, center, max(radius * 0.52 - 0.010, 0.0), width * 0.66) * (1.0 - smoothstep(0.16, 0.54, life));
+            let outer_ring = ring_mask(point, center, radius * 1.34 + 0.022, width * 1.20) * broken_arc(point, center, random.y + 0.37, life) * (1.0 - smoothstep(0.22, 0.88, life));
+            let crown = ring_mask(point, center, 0.020 + life * 0.034, 0.007 + life * 0.005) * broken_arc(point, center, random.x + 0.61, life) * (1.0 - smoothstep(0.10, 0.32, life));
             let splash = splash_mask(point, center, 0.014 + random.y * 0.012);
             let halo = splash_mask(point, center, radius * 0.92 + 0.060);
             let glint_offset = vec2<f32>(-0.010, -0.015) * (0.65 + random.x);
             let impact_glint = splash_mask(point, center + glint_offset, 0.008 + random.y * 0.004);
             let ring_glint = (main_ring + outer_ring * 0.45) * crescent_highlight(point, center, random.y, life);
 
-            rings = max(rings, (main_ring + inner_ring * 0.44 + outer_ring * 0.30) * fade);
-            splashes = max(splashes, splash * pow(1.0 - life, 2.6) + crown * 0.82);
-            halos = max(halos, halo * fade * 0.28);
-            glints = max(glints, ring_glint * 0.78 * fade + impact_glint * pow(1.0 - life, 4.4));
+            rings = max(rings, (main_ring + inner_ring * 0.36 + outer_ring * 0.38) * fade);
+            splashes = max(splashes, splash * pow(1.0 - life, 2.8) + crown * 0.72);
+            halos = max(halos, halo * fade * 0.32);
+            glints = max(glints, ring_glint * 0.88 * fade + impact_glint * pow(1.0 - life, 4.6));
         }
     }
 
@@ -202,14 +203,14 @@ fn broad_surface_ripples(uv: vec2<f32>, aspect: f32) -> f32 {
             let center = (cell + random) / grid_scale;
             let life = fract(uniforms.time * (0.040 + random.y * 0.040) + random.x);
             let grow = ease_out_cubic(life);
-            let radius = 0.10 + grow * (0.50 + random.y * 0.24);
-            let width = 0.009 + life * 0.032;
-            let fade = smoothstep(0.02, 0.22, life) * (1.0 - smoothstep(0.66, 1.0, life));
+            let radius = 0.11 + grow * (0.54 + random.y * 0.28);
+            let width = 0.0075 + life * 0.026;
+            let fade = smoothstep(0.03, 0.24, life) * (1.0 - smoothstep(0.68, 1.0, life));
             let main = ring_mask(point, center, radius, width) * broken_arc(point, center, random.y, life);
-            let echo = ring_mask(point, center, radius * 0.62 + 0.045, width * 0.78) * broken_arc(point, center, random.x + 0.53, life) * (1.0 - smoothstep(0.28, 0.84, life));
-            let glancing = crescent_highlight(point, center, random.x, life) * 0.30 + 0.70;
+            let echo = ring_mask(point, center, radius * 0.58 + 0.050, width * 0.70) * broken_arc(point, center, random.x + 0.53, life) * (1.0 - smoothstep(0.26, 0.82, life));
+            let glancing = crescent_highlight(point, center, random.x, life) * 0.40 + 0.66;
 
-            ripples = max(ripples, (main + echo * 0.42) * fade * glancing);
+            ripples = max(ripples, (main + echo * 0.46) * fade * glancing);
         }
     }
 
