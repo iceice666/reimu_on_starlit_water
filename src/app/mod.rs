@@ -1,8 +1,9 @@
 mod view;
 
 use std::{
+    collections::VecDeque,
     env,
-    sync::Arc,
+    sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 
@@ -13,6 +14,8 @@ use iced_sessionlock::{actions::UnLockAction, application as sessionlock_applica
 use limes_lock::{
     AuthFailure as ProtoAuthFailure, AuthOutcome, AuthRequest, Config, EventBus, LockRuntime,
     LockState, NoopDisplayBackend, NoopLockBackend, StderrEventSink,
+    common::EventSink,
+    proto::{LimesEvent, PamMessageKind},
 };
 
 const IDLE_AFTER: Duration = Duration::from_secs(8);
@@ -23,14 +26,18 @@ const PREVIEW_AUTH_DELAY: Duration = Duration::from_millis(900);
 const WALLPAPER_BYTES: &[u8] = include_bytes!("../../bg.jpg");
 
 pub(crate) fn run_lock() -> Result<(), String> {
+    let pam_messages = PamMessageQueue::default();
     let runtime = Arc::new(
         LockRuntime::from_env()
             .map_err(|error| format!("cannot initialize limes lock runtime: {error}"))?,
     );
     runtime.events().subscribe(Arc::new(StderrEventSink));
+    runtime
+        .events()
+        .subscribe(Arc::new(PamMessageSink::new(pam_messages.clone())));
 
     sessionlock_application(
-        move || FullScreenLock::new_lock(Arc::clone(&runtime)),
+        move || FullScreenLock::new_lock(Arc::clone(&runtime), pam_messages.clone()),
         FullScreenLock::update,
         FullScreenLock::view,
     )
@@ -45,7 +52,7 @@ pub(crate) fn run_preview() -> Result<(), String> {
         FullScreenLock::update,
         FullScreenLock::preview_view,
     )
-    .title("limes full screenlock preview")
+    .title("Reimu Lays on Water preview")
     .window(window::Settings {
         size: Size::new(1280.0, 720.0),
         min_size: Some(Size::new(640.0, 360.0)),
@@ -59,6 +66,7 @@ pub(crate) fn run_preview() -> Result<(), String> {
 struct FullScreenLock {
     mode: RunMode,
     runtime: Option<Arc<LockRuntime>>,
+    pam_messages: PamMessageQueue,
     preview_window: window::Id,
     wallpaper: iced::widget::image::Handle,
     rain_started: Instant,
@@ -101,6 +109,67 @@ enum Message {
     IcedEvent(Event),
 }
 
+#[derive(Debug, Clone)]
+struct PamStatusMessage {
+    kind: PamMessageKind,
+    message: String,
+}
+
+#[derive(Debug, Clone, Default)]
+struct PamMessageQueue {
+    messages: Arc<Mutex<VecDeque<PamStatusMessage>>>,
+}
+
+impl PamMessageQueue {
+    fn push(&self, message: PamStatusMessage) {
+        if let Ok(mut messages) = self.messages.lock() {
+            messages.push_back(message);
+        }
+    }
+
+    fn drain(&self) -> Vec<PamStatusMessage> {
+        self.messages
+            .lock()
+            .map(|mut messages| messages.drain(..).collect())
+            .unwrap_or_default()
+    }
+
+    fn clear(&self) {
+        if let Ok(mut messages) = self.messages.lock() {
+            messages.clear();
+        }
+    }
+}
+
+#[derive(Debug)]
+struct PamMessageSink {
+    messages: PamMessageQueue,
+}
+
+impl PamMessageSink {
+    fn new(messages: PamMessageQueue) -> Self {
+        Self { messages }
+    }
+}
+
+impl EventSink for PamMessageSink {
+    fn emit(&self, event: &LimesEvent) {
+        let LimesEvent::AuthPamMessage { kind, message, .. } = event else {
+            return;
+        };
+
+        let message = message.trim();
+        if message.is_empty() {
+            return;
+        }
+
+        self.messages.push(PamStatusMessage {
+            kind: *kind,
+            message: message.to_owned(),
+        });
+    }
+}
+
 impl TryFrom<Message> for UnLockAction {
     type Error = Message;
 
@@ -113,18 +182,29 @@ impl TryFrom<Message> for UnLockAction {
 }
 
 impl FullScreenLock {
-    fn new_lock(runtime: Arc<LockRuntime>) -> (Self, Task<Message>) {
-        (Self::new(RunMode::Lock, Some(runtime)), Task::none())
-    }
-
-    fn new_preview() -> (Self, Task<Message>) {
+    fn new_lock(runtime: Arc<LockRuntime>, pam_messages: PamMessageQueue) -> (Self, Task<Message>) {
         (
-            Self::new(RunMode::Preview, Some(Arc::new(noop_lock_runtime()))),
+            Self::new(RunMode::Lock, Some(runtime), pam_messages),
             Task::none(),
         )
     }
 
-    fn new(mode: RunMode, runtime: Option<Arc<LockRuntime>>) -> Self {
+    fn new_preview() -> (Self, Task<Message>) {
+        (
+            Self::new(
+                RunMode::Preview,
+                Some(Arc::new(noop_lock_runtime())),
+                PamMessageQueue::default(),
+            ),
+            Task::none(),
+        )
+    }
+
+    fn new(
+        mode: RunMode,
+        runtime: Option<Arc<LockRuntime>>,
+        pam_messages: PamMessageQueue,
+    ) -> Self {
         let now = Instant::now();
         let now_local = Local::now();
         let (clock_date, clock_time, clock_minute) = Self::format_clock(now_local);
@@ -132,6 +212,7 @@ impl FullScreenLock {
         Self {
             mode,
             runtime,
+            pam_messages,
             preview_window: window::Id::unique(),
             wallpaper: iced::widget::image::Handle::from_bytes(WALLPAPER_BYTES),
             rain_started: now,
@@ -213,6 +294,7 @@ impl FullScreenLock {
             Message::WindowClosed => iced::exit(),
             Message::Tick(now) => {
                 self.update_clock_text();
+                self.drain_pam_messages();
 
                 if self.screen_state == ScreenState::Typing
                     && now.duration_since(self.last_input) > IDLE_AFTER
@@ -262,6 +344,19 @@ impl FullScreenLock {
         }
     }
 
+    fn drain_pam_messages(&mut self) {
+        if self.screen_state != ScreenState::Authenticating {
+            self.pam_messages.clear();
+            return;
+        }
+
+        for message in self.pam_messages.drain() {
+            if should_show_pam_message(message.kind, &message.message) {
+                self.status = message.message;
+            }
+        }
+    }
+
     fn activate_typing(&mut self) -> Task<Message> {
         if self.screen_state != ScreenState::Authenticating {
             self.screen_state = ScreenState::Typing;
@@ -286,6 +381,7 @@ impl FullScreenLock {
         self.screen_state = ScreenState::Authenticating;
         self.lock_state = LockState::Unlocking;
         self.auth_started = Some(Instant::now());
+        self.pam_messages.clear();
 
         match self.mode {
             RunMode::Lock => {
@@ -298,7 +394,7 @@ impl FullScreenLock {
                     return focus(PASSWORD_INPUT_ID);
                 };
                 let username = self.username.clone();
-                self.status = "Verifying with PAM…".to_owned();
+                self.status.clear();
 
                 Task::perform(
                     async move {
@@ -361,6 +457,15 @@ impl FullScreenLock {
         self.last_input = Instant::now();
         focus(PASSWORD_INPUT_ID)
     }
+}
+
+fn should_show_pam_message(kind: PamMessageKind, message: &str) -> bool {
+    if kind != PamMessageKind::PromptEchoOff {
+        return true;
+    }
+
+    let message = message.trim().trim_end_matches(':').to_ascii_lowercase();
+    !matches!(message.as_str(), "password" | "passphrase")
 }
 
 fn noop_lock_runtime() -> LockRuntime {

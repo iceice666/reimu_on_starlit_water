@@ -31,7 +31,7 @@
         ];
 
         reimuLaysOnWater = pkgs.rustPlatform.buildRustPackage {
-          pname = "limes-full-screenlock";
+          pname = "reimu-lays-on-water";
           version = "0.1.0";
           src = pkgs.lib.cleanSource ./.;
           cargoLock.lockFile = ./Cargo.lock;
@@ -42,12 +42,12 @@
       {
         packages = {
           default = reimuLaysOnWater;
-          limes-full-screenlock = reimuLaysOnWater;
+          reimu-lays-on-water = reimuLaysOnWater;
         };
 
         apps.default = {
           type = "app";
-          program = "${reimuLaysOnWater}/bin/limes-full-screenlock";
+          program = "${reimuLaysOnWater}/bin/reimu-lays-on-water";
           meta.description = "Run the Reimu Lays on Water lock screen";
         };
 

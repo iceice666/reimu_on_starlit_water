@@ -958,7 +958,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2029,19 +2029,20 @@ dependencies = [
 
 [[package]]
 name = "limes-common"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "549e0e8f85083aa0e1810d7c5ef0725deeea302917daa62a20a4d457f1154342"
+checksum = "ea5535db0eab63e055e4bb54f460a8aa1a674ba6bae9d9176784de4d24228c82"
 dependencies = [
  "libc",
  "limes-proto",
+ "zeroize",
 ]
 
 [[package]]
 name = "limes-lock"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c161d609164f9f429a932cec1d224c9069bb1e61a45cd3763b0900b130a00283"
+checksum = "4e5c27f7b03adf6ac493ccea8c08e225dcfcfedcaf7fdbcd6d34056977e1aca7"
 dependencies = [
  "limes-common",
  "limes-proto",
@@ -2051,9 +2052,12 @@ dependencies = [
 
 [[package]]
 name = "limes-proto"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4442487ba8afc7d80a09a78384f2827218fe38d22bf75f3e003354197b8f14a3"
+checksum = "eaa93e2a70e54c81d546582cb256079a04a619f8828010ccf6aec9857555ed7a"
+dependencies = [
+ "zeroize",
+]
 
 [[package]]
 name = "linebender_resource_handle"
@@ -3388,7 +3392,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3806,7 +3810,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4552,7 +4556,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5194,6 +5198,12 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "zeroize"
+version = "1.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b97154e67e32c85465826e8bcc1c59429aaaf107c1e4a9e53c8d8ccd5eff88d0"
 
 [[package]]
 name = "zmij"

@@ -26,7 +26,7 @@ impl CliMode {
                 Ok(None)
             }
             other => Err(format!(
-                "unknown command `{other}`; try `limes-full-screenlock --help`"
+                "unknown command `{other}`; try `reimu-lays-on-water --help`"
             )),
         }
     }
@@ -53,8 +53,8 @@ impl CliMode {
 
 fn print_help() {
     println!(
-        "limes full screenlock\n\n\
-Usage:\n  limes-full-screenlock lock\n  limes-full-screenlock preview\n\n\
+        "Reimu Lays on Water\n\n\
+Usage:\n  reimu-lays-on-water lock\n  reimu-lays-on-water preview\n\n\
 Commands:\n  lock     Lock the session using Wayland ext-session-lock-v1 surfaces\n  preview  Show the lock UI in a normal window without locking or PAM\n\n\
 Options:\n  -h, --help    Show help"
     );
@@ -63,12 +63,12 @@ Options:\n  -h, --help    Show help"
 fn print_command_help(mode: CliMode) {
     match mode {
         CliMode::Lock => println!(
-            "Usage: limes-full-screenlock lock\n\n\
+            "Usage: reimu-lays-on-water lock\n\n\
 Runs the full-screen session lock frontend on Wayland ext-session-lock-v1\n\
 surfaces and authenticates unlock attempts with limes-lock/PAM."
         ),
         CliMode::Preview => println!(
-            "Usage: limes-full-screenlock preview\n\n\
+            "Usage: reimu-lays-on-water preview\n\n\
 Runs the same lock UI in a normal resizable window. It never locks the\n\
 session and Enter only plays the authentication animation."
         ),

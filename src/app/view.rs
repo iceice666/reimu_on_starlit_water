@@ -11,7 +11,6 @@ use crate::style::{input_shell, password_input_style};
 
 use super::{FullScreenLock, Message, PASSWORD_INPUT_ID, ScreenState};
 
-const SLOW_AUTH_AFTER: Duration = Duration::from_secs(3);
 const RAIN_INTENSITY: f32 = 0.90;
 const INPUT_WIDTH: f32 = 200.0;
 const INPUT_HEIGHT: f32 = 45.0;
@@ -109,8 +108,7 @@ impl FullScreenLock {
         };
 
         let content = if loading {
-            let pam_status =
-                status_badge(auth_status_message(self.auth_started, &self.status), false);
+            let pam_status = status_badge(auth_status_message(&self.status), false);
 
             column![
                 Space::new().height(Length::Fill),
@@ -146,10 +144,8 @@ impl FullScreenLock {
     }
 }
 
-fn auth_status_message(auth_started: Option<Instant>, status: &str) -> &str {
-    if auth_started.is_some_and(|started| started.elapsed() > SLOW_AUTH_AFTER) {
-        "Still verifying…"
-    } else if status.is_empty() {
+fn auth_status_message(status: &str) -> &str {
+    if status.is_empty() {
         "Verifying…"
     } else {
         status

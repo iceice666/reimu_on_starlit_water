@@ -43,10 +43,10 @@ Build a release binary:
 
 ```sh
 cargo build --release
-./target/release/limes-full-screenlock lock
+./target/release/reimu-lays-on-water lock
 ```
 
-The current Cargo package/binary name is `limes-full-screenlock`.
+The current Cargo package/binary name is `reimu-lays-on-water`.
 
 ## PAM
 

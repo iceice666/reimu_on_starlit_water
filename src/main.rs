@@ -10,7 +10,7 @@ use cli::CliMode;
 
 fn main() {
     if let Err(error) = run() {
-        eprintln!("limes-full-screenlock: {error}");
+        eprintln!("reimu-lays-on-water: {error}");
         process::exit(1);
     }
 }
