@@ -33,6 +33,7 @@ const PASSWORD_INPUT_ID: &str = "password-input";
 const SPINNER_FRAME: Duration = Duration::from_millis(16);
 const RESTING_FRAME: Duration = Duration::from_millis(33);
 const PREVIEW_AUTH_DELAY: Duration = Duration::from_millis(900);
+const DAEMON_READY_TIMEOUT: Duration = Duration::from_secs(5);
 const WALLPAPER_BYTES: &[u8] = include_bytes!("../../bg.jpg");
 
 pub(crate) fn run_lock(options: LockOptions) -> Result<(), String> {
@@ -330,6 +331,24 @@ impl Drop for DaemonReady {
 
 impl DaemonParent {
     fn wait(self) -> Result<(), String> {
+        let mut poll_fds = [libc::pollfd {
+            fd: self.read_fd,
+            events: libc::POLLIN,
+            revents: 0,
+        }];
+        let timeout = i32::try_from(DAEMON_READY_TIMEOUT.as_millis()).unwrap_or(i32::MAX);
+        let ready = unsafe { libc::poll(poll_fds.as_mut_ptr(), 1, timeout) };
+        if ready == 0 {
+            eprintln!("reimu-on-starlit-water: timed out waiting for compositor lock confirmation");
+            return Err("timed out waiting for compositor lock confirmation".to_owned());
+        }
+        if ready < 0 {
+            return Err(format!(
+                "cannot wait for lock daemon readiness: {}",
+                std::io::Error::last_os_error()
+            ));
+        }
+
         let mut file = unsafe { File::from_raw_fd(self.read_fd) };
         let mut byte = [0; 1];
         match file.read(&mut byte) {
