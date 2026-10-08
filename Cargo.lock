@@ -2027,9 +2027,9 @@ dependencies = [
 
 [[package]]
 name = "limes-common"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea5535db0eab63e055e4bb54f460a8aa1a674ba6bae9d9176784de4d24228c82"
+checksum = "c287c9c23c661da50b74c9ee4bf87e306d8868f9057e0acbe4e7b16f4e1ef6e8"
 dependencies = [
  "libc",
  "limes-proto",
@@ -2038,10 +2038,11 @@ dependencies = [
 
 [[package]]
 name = "limes-lock"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e5c27f7b03adf6ac493ccea8c08e225dcfcfedcaf7fdbcd6d34056977e1aca7"
+checksum = "224319e612e4751e9784b07b13935ad979a1cae87242ea70ee90ee7ed9b23274"
 dependencies = [
+ "libc",
  "limes-common",
  "limes-proto",
  "smithay-client-toolkit 0.19.2",
@@ -2050,9 +2051,9 @@ dependencies = [
 
 [[package]]
 name = "limes-proto"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eaa93e2a70e54c81d546582cb256079a04a619f8828010ccf6aec9857555ed7a"
+checksum = "7bd1c58053e50299a244a018ab984bdc126ca022d52d22ba68491073a37bab0b"
 dependencies = [
  "zeroize",
 ]

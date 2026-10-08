@@ -50,7 +50,8 @@ pub(crate) fn run_lock(options: LockOptions) -> Result<(), String> {
 
     let pam_messages = PamMessageQueue::default();
     let runtime = Arc::new(
-        LockRuntime::from_env()
+        // iced_sessionlock owns the compositor lock; limes only authenticates.
+        LockRuntime::for_frontend_from_env()
             .map_err(|error| format!("cannot initialize limes lock runtime: {error}"))?,
     );
     runtime.events().subscribe(Arc::new(StderrEventSink));
@@ -676,9 +677,10 @@ impl FullScreenLock {
     fn finish_auth(&mut self, outcome: AuthOutcome) -> Task<Message> {
         match outcome {
             Ok(_) => {
-                self.lock_state = LockState::Unlocked;
+                // PAM success does not confirm that the compositor released the lock.
+                self.lock_state = LockState::Unlocking;
                 self.auth_started = None;
-                self.status = "Unlocked.".to_owned();
+                self.status = "Authenticated; releasing lock…".to_owned();
                 Task::done(Message::UnlockSession)
             }
             Err(error) => {
@@ -750,4 +752,58 @@ fn chinese_date(weekday: Weekday, month: u32, day: u32) -> String {
     };
 
     format!("{month}月{day}日 {weekday}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn authenticating_lock() -> FullScreenLock {
+        let mut app = FullScreenLock::new(RunMode::Lock, None, PamMessageQueue::default());
+        app.lock_state = LockState::Unlocking;
+        app.screen_state = ScreenState::Authenticating;
+        app.auth_started = Some(Instant::now());
+        app
+    }
+
+    #[test]
+    fn authentication_success_does_not_confirm_display_unlock() {
+        let mut app = authenticating_lock();
+        let _task = app.finish_auth(Ok(limes_lock::AuthSuccess {
+            username: "test-user".to_owned(),
+            uid: 1000,
+            gid: 1000,
+            home: None,
+            shell: None,
+        }));
+
+        assert_eq!(app.lock_state, LockState::Unlocking);
+        assert!(app.auth_started.is_none());
+        assert_eq!(app.status, "Authenticated; releasing lock…");
+    }
+
+    #[test]
+    fn authentication_failure_keeps_session_locked() {
+        let mut app = authenticating_lock();
+        let _task = app.finish_auth(Err(ProtoAuthFailure::InvalidCredentials));
+
+        assert_eq!(app.lock_state, LockState::Locked);
+        assert_eq!(app.screen_state, ScreenState::Typing);
+        assert!(app.failure_shade);
+        assert!(app.auth_started.is_none());
+    }
+
+    #[test]
+    fn preview_authentication_does_not_require_a_runtime_or_unlock() {
+        let mut app = FullScreenLock::new(RunMode::Preview, None, PamMessageQueue::default());
+        let _task = app.submit();
+        assert_eq!(app.screen_state, ScreenState::Authenticating);
+        assert_eq!(app.lock_state, LockState::Unlocking);
+
+        let _task = app.finish_preview_auth();
+        assert_eq!(app.lock_state, LockState::Locked);
+        assert_eq!(app.screen_state, ScreenState::Typing);
+        assert!(!app.failure_shade);
+        assert_eq!(app.status, "Preview mode: authentication skipped.");
+    }
 }

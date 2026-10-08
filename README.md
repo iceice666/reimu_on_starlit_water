@@ -126,6 +126,8 @@ If you only want the package in `pkgs`, add the overlay:
 
 Lock mode authenticates the current `$USER` through `limes-lock`, which uses the PAM service name `limes`. Configure `/etc/pam.d/limes` using the policy appropriate for your distribution, for example by including the same authentication stack used by your login or screen-locking tools.
 
+With `limes-lock` 0.3, lock mode uses `LockRuntime::for_frontend_from_env()` for PAM authentication only. `iced_sessionlock` owns the Wayland session-lock surfaces and releases the compositor lock only after authentication succeeds; authentication success alone is not confirmation that the display is unlocked.
+
 `preview` mode never calls PAM; pressing Enter only plays the authentication animation.
 
 ## Background
